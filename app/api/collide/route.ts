@@ -29,8 +29,7 @@ export async function POST(req: Request) {
     const pastThought = randomThoughts[0].content;
 
     // 2. Smash them together using Gemini
-    const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
-    
+const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });    
     const prompt = `
       You are the Collision Generator, an AI designed to find profound, lateral connections between completely unrelated ideas.
       
