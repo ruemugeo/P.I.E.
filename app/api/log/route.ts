@@ -3,38 +3,53 @@ import { GoogleGenerativeAI } from '@google/generative-ai';
 import { createClient } from '@supabase/supabase-js';
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!);
-const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!);
+const supabase = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+);
 
 export async function POST(req: Request) {
   try {
     const { content } = await req.json();
 
-    const flashModel = genAI.getGenerativeModel({ 
-      model: "gemini-2.5-flash", 
-      generationConfig: { responseMimeType: "application/json" }
-    });
-    const prompt = `Analyze this thought and extract metadata. Return ONLY valid JSON with these exact keys: "category" (broad domain), "theme" (specific topic), and "sentiment" (emotional tone). Thought: "${content}"`;
+    // Make sure to use the active model!
+    const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
     
-    const result = await flashModel.generateContent(prompt);
-    const metadata = JSON.parse(result.response.text());
+    // The Upgraded Ghost Architecture Prompt
+    const prompt = `
+      Analyze this thought deeply: "${content}"
+      
+      You must return a STRICT JSON object with exactly three keys. Do NOT wrap it in markdown blockquotes, just return the raw JSON.
+      
+      {
+        "category": "A broad 1-2 word category (e.g., Tech, Philosophy, Memory)",
+        "sentiment": "A 1-2 word emotional state (e.g., Anxious, Euphoric, Analytical)",
+        "ghostTag": "A deep psychological archetype, mental model, or philosophical school representing the subtext (e.g., Existentialism, First Principles, Cognitive Dissonance, Paradigm Shift)"
+      }
+    `;
 
-    const embeddingModel = genAI.getGenerativeModel({ model: "gemini-embedding-001" });
-    const embeddingResult = await embeddingModel.embedContent(content);
-    const embedding = embeddingResult.embedding.values;
+    const result = await model.generateContent(prompt);
+    let text = result.response.text().trim();
+    
+    // Strip markdown formatting just in case the AI disobeys
+    if (text.startsWith('```json')) text = text.replace(/```json/g, '');
+    if (text.startsWith('```')) text = text.replace(/```/g, '');
+    
+    const aiData = JSON.parse(text);
 
-    const { error } = await supabase.from('thoughts').insert({
-      content,
-      category: metadata.category,
-      theme: metadata.theme,
-      sentiment: metadata.sentiment,
-      embedding
-    });
+    // Combine the sentiment and Ghost Tag so it fits perfectly in our UI without DB changes
+    const enhancedSentiment = `${aiData.sentiment} • 👻 ${aiData.ghostTag}`;
 
-    if (error) throw error;
+    await supabase.from('thoughts').insert([{
+      content: content,
+      category: aiData.category,
+      sentiment: enhancedSentiment
+    }]);
 
-    return NextResponse.json({ success: true, metadata });
+    return NextResponse.json({ success: true });
+
   } catch (error) {
-    console.error("Ingestion Error:", error);
+    console.error("Logging Error:", error);
     return NextResponse.json({ error: 'Failed to process thought' }, { status: 500 });
   }
 }
