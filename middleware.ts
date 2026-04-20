@@ -13,12 +13,12 @@ export function middleware(req: NextRequest) {
         return NextResponse.next();
       }
     } catch (e) {
-      // If decoding fails, don't crash the server, just ask for the password again
-      console.log('Auth error ignored');
+      console.log('Auth decoding failed');
     }
   }
 
-  return new NextResponse('Unauthorized access to the Cognitive Engine.', {
+  // Edge-safe: return null instead of a text string
+  return new NextResponse(null, {
     status: 401,
     headers: {
       'WWW-Authenticate': 'Basic realm="Secure Area"',
@@ -26,7 +26,7 @@ export function middleware(req: NextRequest) {
   });
 }
 
-// CRITICAL FIX: Tell the lock to ignore Vercel's internal system files
+// CRITICAL FIX: Exclude system files AND internal /api calls
 export const config = {
-  matcher: ['/((?!_next/static|_next/image|favicon.ico).*)'],
+  matcher: ['/((?!api|_next/static|_next/image|favicon.ico).*)'],
 };
