@@ -94,7 +94,12 @@ export default function Home() {
     
     const data = await res.json();
     setAnalysis(data.analysis);
-    setStatus('');
+    
+    // NEW: Refresh the lattice to show the saved collision
+    fetchHistory(); 
+    
+    setStatus('Collision saved to lattice.');
+    setTimeout(() => setStatus(''), 3000);
     setIsProcessing(false);
   };
 

@@ -12,12 +12,10 @@ export async function POST(req: Request) {
   try {
     const { currentThought } = await req.json();
 
-    // 1. Grab a random past thought from the lattice
-    // We use a neat trick here: sorting by random UUID
     const { data: randomThoughts, error } = await supabase
       .from('thoughts')
       .select('content')
-      .neq('content', currentThought) // Don't collide with itself
+      .neq('content', currentThought)
       .limit(1);
 
     if (error || !randomThoughts || randomThoughts.length === 0) {
@@ -28,8 +26,8 @@ export async function POST(req: Request) {
 
     const pastThought = randomThoughts[0].content;
 
-    // 2. Smash them together using Gemini
-const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });    
+    const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
+    
     const prompt = `
       You are the Collision Generator, an AI designed to find lateral connections between completely unrelated ideas.
       
@@ -44,10 +42,18 @@ const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
 
     const result = await model.generateContent(prompt);
     const text = result.response.text();
+    
+    // Format the final text
+    const finalOutput = `💥 COLLISION DETECTED 💥\n\nPast: "${pastThought}"\n\nCurrent: "${currentThought}"\n\nSynthesis: ${text}`;
 
-    return NextResponse.json({ 
-      analysis: `💥 COLLISION DETECTED 💥\n\nPast Thought: "${pastThought}"\n\nSynthesis: ${text}` 
-    });
+    // NEW: Save the collision back into the database as a new node!
+    await supabase.from('thoughts').insert([{
+      content: finalOutput,
+      category: 'Collision',
+      sentiment: 'Synthesis'
+    }]);
+
+    return NextResponse.json({ analysis: finalOutput });
 
   } catch (error) {
     console.error("Collision Error:", error);
