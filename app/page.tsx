@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { BrainCircuit, Sparkles, Flame, Send, Database, Tag, Zap, Star, Search, Trash2, Edit2, Check, X, Calendar } from 'lucide-react';
+import { BrainCircuit, Sparkles, Flame, Send, Database, Tag, Zap, Star, Search, Trash2, Edit2, Check, X, Calendar, Mic } from 'lucide-react';
 
 type Thought = {
   id: number;
@@ -12,7 +12,6 @@ type Thought = {
   created_at: string;
 };
 
-// --- Custom Date Formatter ---
 const formatDate = (dateString: string) => {
   const d = new Date(dateString);
   const day = d.getDate();
@@ -25,13 +24,13 @@ const formatDate = (dateString: string) => {
 export default function Home() {
   const [thought, setThought] = useState('');
   const [filterText, setFilterText] = useState('');
-  const [sortBy, setSortBy] = useState('newest'); // Sort State
+  const [sortBy, setSortBy] = useState('newest');
   const [status, setStatus] = useState('');
   const [analysis, setAnalysis] = useState('');
   const [history, setHistory] = useState<Thought[]>([]);
   const [isProcessing, setIsProcessing] = useState(false);
+  const [isListening, setIsListening] = useState(false); // NEW: Voice State
   
-  // Edit States
   const [editingId, setEditingId] = useState<number | null>(null);
   const [editContent, setEditContent] = useState('');
 
@@ -85,7 +84,6 @@ export default function Home() {
     setIsProcessing(false);
   };
 
-  // Upgraded Zap: Works even if input is empty!
   const getCollision = async () => {
     setIsProcessing(true);
     setStatus('Initiating particle collision...');
@@ -105,7 +103,6 @@ export default function Home() {
     setIsProcessing(false);
   };
 
-  // --- Edit & Delete Functions ---
   const deleteThought = async (id: number) => {
     if (!confirm("Delete this thought from the lattice?")) return;
     await fetch('/api/delete', {
@@ -126,7 +123,49 @@ export default function Home() {
     fetchHistory();
   };
 
-  // --- Filtering & Sorting Logic ---
+  // NEW: Voice to Text Function
+  const startListening = () => {
+    if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
+      setStatus('Voice input not supported in this browser.');
+      setTimeout(() => setStatus(''), 3000);
+      return;
+    }
+    
+    // @ts-ignore - necessary because TypeScript doesn't natively know about webkitSpeechRecognition
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    const recognition = new SpeechRecognition();
+    
+    recognition.continuous = false;
+    recognition.interimResults = true;
+    
+    recognition.onstart = () => {
+      setIsListening(true);
+      setStatus('Listening... speak now.');
+    };
+    
+    recognition.onresult = (event: any) => {
+      const transcript = Array.from(event.results)
+        .map((result: any) => result[0])
+        .map((result: any) => result.transcript)
+        .join('');
+      setThought(transcript);
+    };
+    
+    recognition.onerror = (event: any) => {
+      console.error("Speech recognition error", event.error);
+      setIsListening(false);
+      setStatus('Microphone error or permission denied.');
+      setTimeout(() => setStatus(''), 3000);
+    };
+    
+    recognition.onend = () => {
+      setIsListening(false);
+      setStatus('');
+    };
+    
+    recognition.start();
+  };
+
   let processedHistory = history.filter(item => {
     const formattedDate = formatDate(item.created_at).toLowerCase();
     const searchLow = filterText.toLowerCase();
@@ -134,7 +173,7 @@ export default function Home() {
       item.content.toLowerCase().includes(searchLow) ||
       item.category.toLowerCase().includes(searchLow) ||
       item.sentiment.toLowerCase().includes(searchLow) ||
-      formattedDate.includes(searchLow) // Search by year/month/date!
+      formattedDate.includes(searchLow)
     );
   });
 
@@ -158,19 +197,31 @@ export default function Home() {
             <h1 className="text-2xl font-bold tracking-tight bg-gradient-to-r from-neutral-100 to-neutral-500 bg-clip-text text-transparent">
               Cognitive Engine
             </h1>
-            <p className="text-xs text-neutral-500 tracking-widest uppercase mt-1">Version 1.5 • Omni-Control</p>
+            <p className="text-xs text-neutral-500 tracking-widest uppercase mt-1">Version 1.6 • Voice Active</p>
           </div>
         </motion.div>
         
         <motion.div className="relative group">
           <textarea
-            className="w-full h-36 p-5 bg-neutral-900/50 backdrop-blur-md border border-neutral-800 rounded-2xl focus:ring-2 focus:ring-blue-500/50 outline-none resize-none transition-all duration-300 placeholder:text-neutral-700 text-lg leading-relaxed shadow-inner"
-            placeholder="Type a thought, or leave blank and hit Zap to collide random memories..."
+            className={`w-full h-36 p-5 bg-neutral-900/50 backdrop-blur-md border rounded-2xl outline-none resize-none transition-all duration-300 placeholder:text-neutral-700 text-lg leading-relaxed shadow-inner ${isListening ? 'border-emerald-500/50 ring-2 ring-emerald-500/20' : 'border-neutral-800 focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500/50'}`}
+            placeholder="Type a thought, tap the mic to speak, or leave blank to Zap..."
             value={thought}
             onChange={(e) => setThought(e.target.value)}
           />
           
           <div className="absolute bottom-4 right-4 flex gap-2">
+            {/* NEW: Voice Button */}
+            <button 
+              onClick={startListening} 
+              disabled={isListening || isProcessing} 
+              className={`p-2 rounded-xl transition-all ${isListening ? 'bg-emerald-900/50 text-emerald-400 border border-emerald-500 animate-pulse' : 'bg-emerald-900/20 text-emerald-500 border border-emerald-900/50 hover:bg-emerald-900/40'}`} 
+              title="Dictate Thought"
+            >
+              <Mic size={18} />
+            </button>
+
+            <div className="w-px h-8 bg-neutral-800 mx-1 my-auto hidden sm:block"></div>
+
             <button onClick={() => getAnalysis('angel')} disabled={isProcessing || !thought} className="p-2 bg-blue-900/30 text-blue-400 border border-blue-900/50 hover:bg-blue-900/50 rounded-xl transition-all disabled:opacity-30" title="Summon Angel"><Sparkles size={18} /></button>
             <button onClick={() => getAnalysis('devil')} disabled={isProcessing || !thought} className="p-2 bg-red-900/30 text-red-400 border border-red-900/50 hover:bg-red-900/50 rounded-xl transition-all disabled:opacity-30" title="Summon Devil"><Flame size={18} /></button>
             <button onClick={getCollision} disabled={isProcessing} className="p-2 bg-fuchsia-900/30 text-fuchsia-400 border border-fuchsia-900/50 hover:bg-fuchsia-900/50 rounded-xl transition-all" title="Trigger Collision"><Zap size={18} /></button>
@@ -187,7 +238,6 @@ export default function Home() {
         <div className="h-px w-full bg-gradient-to-r from-transparent via-neutral-800 to-transparent my-12" />
 
         <motion.div>
-          {/* Enhanced Control Bar */}
           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4">
             <h2 className="text-lg font-bold text-neutral-500 flex items-center gap-2">
               <Database size={18} /> Lattice
@@ -231,7 +281,6 @@ export default function Home() {
                     'bg-neutral-900/30 border-neutral-800/50'
                   }`}
                 >
-                  {/* Edit Mode vs Display Mode */}
                   {editingId === item.id ? (
                     <div className="space-y-3">
                       <textarea 
@@ -248,7 +297,6 @@ export default function Home() {
                     <>
                       <p className="text-neutral-300 pr-12">{item.content}</p>
                       
-                      {/* Action Buttons (Hidden until hover on Desktop, visible on Mobile) */}
                       <div className="absolute top-4 right-4 flex gap-2 opacity-100 sm:opacity-0 group-hover:opacity-100 transition-opacity">
                         <button onClick={() => { setEditingId(item.id); setEditContent(item.content); }} className="p-1.5 text-neutral-500 hover:text-blue-400 hover:bg-blue-900/20 rounded-md"><Edit2 size={16} /></button>
                         <button onClick={() => deleteThought(item.id)} className="p-1.5 text-neutral-500 hover:text-red-400 hover:bg-red-900/20 rounded-md"><Trash2 size={16} /></button>
