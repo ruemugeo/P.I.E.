@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { BrainCircuit, Sparkles, Flame, Send, Database, Tag } from 'lucide-react';
+import { BrainCircuit, Sparkles, Flame, Send, Database, Tag, Zap } from 'lucide-react';
 
 type Thought = {
   id: number;
@@ -76,6 +76,28 @@ export default function Home() {
     setIsProcessing(false);
   };
 
+  const getCollision = async () => {
+    if (!thought) {
+      setStatus('Type a thought first to trigger a collision!');
+      setTimeout(() => setStatus(''), 3000);
+      return;
+    }
+    setIsProcessing(true);
+    setStatus('Initiating particle collision...');
+    setAnalysis('');
+    
+    const res = await fetch('/api/collide', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ currentThought: thought }),
+    });
+    
+    const data = await res.json();
+    setAnalysis(data.analysis);
+    setStatus('');
+    setIsProcessing(false);
+  };
+
   return (
     <main className="min-h-screen bg-[#0a0a0a] text-neutral-200 p-8 flex flex-col items-center font-mono pb-24 selection:bg-blue-500/30">
       <div className="w-full max-w-2xl space-y-8 mt-12">
@@ -93,7 +115,7 @@ export default function Home() {
             <h1 className="text-2xl font-bold tracking-tight bg-gradient-to-r from-neutral-100 to-neutral-500 bg-clip-text text-transparent">
               Cognitive Engine
             </h1>
-            <p className="text-xs text-neutral-500 tracking-widest uppercase mt-1">Version 1.2 • Synced</p>
+            <p className="text-xs text-neutral-500 tracking-widest uppercase mt-1">Version 1.3 • Collider Active</p>
           </div>
         </motion.div>
         
@@ -127,6 +149,14 @@ export default function Home() {
               title="Summon Devil"
             >
               <Flame size={18} />
+            </button>
+            <button 
+              onClick={getCollision}
+              disabled={isProcessing}
+              className="p-2 bg-fuchsia-900/30 text-fuchsia-400 border border-fuchsia-900/50 hover:bg-fuchsia-900/50 rounded-xl transition-all hover:scale-105 disabled:opacity-50 disabled:hover:scale-100"
+              title="Trigger Collision"
+            >
+              <Zap size={18} />
             </button>
             <button 
               onClick={submitThought}
