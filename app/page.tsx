@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { BrainCircuit, Sparkles, Flame, Send, Database, Tag, Zap, Star, Search } from 'lucide-react';
+import { BrainCircuit, Sparkles, Flame, Send, Database, Tag, Zap, Star, Search, Trash2, Edit2, Check, X, Calendar } from 'lucide-react';
 
 type Thought = {
   id: number;
@@ -12,13 +12,28 @@ type Thought = {
   created_at: string;
 };
 
+// --- Custom Date Formatter ---
+const formatDate = (dateString: string) => {
+  const d = new Date(dateString);
+  const day = d.getDate();
+  const suffix = ["th", "st", "nd", "rd"][(day % 10 > 3 || Math.floor(day % 100 / 10) === 1) ? 0 : day % 10];
+  const month = d.toLocaleString('default', { month: 'long' });
+  const year = d.getFullYear();
+  return `${day}${suffix} ${month} ${year}`;
+};
+
 export default function Home() {
   const [thought, setThought] = useState('');
   const [filterText, setFilterText] = useState('');
+  const [sortBy, setSortBy] = useState('newest'); // Sort State
   const [status, setStatus] = useState('');
   const [analysis, setAnalysis] = useState('');
   const [history, setHistory] = useState<Thought[]>([]);
   const [isProcessing, setIsProcessing] = useState(false);
+  
+  // Edit States
+  const [editingId, setEditingId] = useState<number | null>(null);
+  const [editContent, setEditContent] = useState('');
 
   useEffect(() => {
     fetchHistory();
@@ -32,39 +47,19 @@ export default function Home() {
     }
   };
 
-  const submitThought = async () => {
+  const submitAction = async (endpoint: string, successMsg: string) => {
     if (!thought) return;
     setIsProcessing(true);
-    setStatus('Indexing shadow data...');
+    setStatus('Processing...');
     
-    const res = await fetch('/api/log', {
+    const res = await fetch(endpoint, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ content: thought }),
     });
     
     if (res.ok) {
-      setStatus('Thought captured.');
-      setThought('');
-      fetchHistory();
-    }
-    setTimeout(() => setStatus(''), 3000);
-    setIsProcessing(false);
-  };
-
-  const submitInterest = async () => {
-    if (!thought) return;
-    setIsProcessing(true);
-    setStatus('Locking in core interest...');
-    
-    const res = await fetch('/api/interest', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ content: thought }),
-    });
-    
-    if (res.ok) {
-      setStatus('Interest added to matrix.');
+      setStatus(successMsg);
       setThought('');
       fetchHistory();
     }
@@ -90,8 +85,8 @@ export default function Home() {
     setIsProcessing(false);
   };
 
+  // Upgraded Zap: Works even if input is empty!
   const getCollision = async () => {
-    if (!thought) return;
     setIsProcessing(true);
     setStatus('Initiating particle collision...');
     setAnalysis('');
@@ -105,17 +100,51 @@ export default function Home() {
     const data = await res.json();
     setAnalysis(data.analysis);
     fetchHistory();
-    setStatus('Collision saved.');
+    setStatus('Collision complete.');
     setTimeout(() => setStatus(''), 3000);
     setIsProcessing(false);
   };
 
-  // Filter logic: checks content, category, and sentiment
-  const filteredHistory = history.filter(item => 
-    item.content.toLowerCase().includes(filterText.toLowerCase()) ||
-    item.category.toLowerCase().includes(filterText.toLowerCase()) ||
-    item.sentiment.toLowerCase().includes(filterText.toLowerCase())
-  );
+  // --- Edit & Delete Functions ---
+  const deleteThought = async (id: number) => {
+    if (!confirm("Delete this thought from the lattice?")) return;
+    await fetch('/api/delete', {
+      method: 'DELETE',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id }),
+    });
+    fetchHistory();
+  };
+
+  const saveEdit = async (id: number) => {
+    await fetch('/api/edit', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id, content: editContent }),
+    });
+    setEditingId(null);
+    fetchHistory();
+  };
+
+  // --- Filtering & Sorting Logic ---
+  let processedHistory = history.filter(item => {
+    const formattedDate = formatDate(item.created_at).toLowerCase();
+    const searchLow = filterText.toLowerCase();
+    return (
+      item.content.toLowerCase().includes(searchLow) ||
+      item.category.toLowerCase().includes(searchLow) ||
+      item.sentiment.toLowerCase().includes(searchLow) ||
+      formattedDate.includes(searchLow) // Search by year/month/date!
+    );
+  });
+
+  if (sortBy === 'oldest') {
+    processedHistory.sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
+  } else if (sortBy === 'newest') {
+    processedHistory.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+  } else if (sortBy === 'category') {
+    processedHistory.sort((a, b) => a.category.localeCompare(b.category));
+  }
 
   return (
     <main className="min-h-screen bg-[#0a0a0a] text-neutral-200 p-8 flex flex-col items-center font-mono pb-24 selection:bg-blue-500/30">
@@ -129,106 +158,117 @@ export default function Home() {
             <h1 className="text-2xl font-bold tracking-tight bg-gradient-to-r from-neutral-100 to-neutral-500 bg-clip-text text-transparent">
               Cognitive Engine
             </h1>
-            <p className="text-xs text-neutral-500 tracking-widest uppercase mt-1">Version 1.4 • Filter & Interests</p>
+            <p className="text-xs text-neutral-500 tracking-widest uppercase mt-1">Version 1.5 • Omni-Control</p>
           </div>
         </motion.div>
         
         <motion.div className="relative group">
           <textarea
             className="w-full h-36 p-5 bg-neutral-900/50 backdrop-blur-md border border-neutral-800 rounded-2xl focus:ring-2 focus:ring-blue-500/50 outline-none resize-none transition-all duration-300 placeholder:text-neutral-700 text-lg leading-relaxed shadow-inner"
-            placeholder="Type a thought, or declare a new Interest..."
+            placeholder="Type a thought, or leave blank and hit Zap to collide random memories..."
             value={thought}
             onChange={(e) => setThought(e.target.value)}
           />
           
           <div className="absolute bottom-4 right-4 flex gap-2">
-            <button onClick={() => getAnalysis('angel')} disabled={isProcessing} className="p-2 bg-blue-900/30 text-blue-400 border border-blue-900/50 hover:bg-blue-900/50 rounded-xl transition-all" title="Summon Angel"><Sparkles size={18} /></button>
-            <button onClick={() => getAnalysis('devil')} disabled={isProcessing} className="p-2 bg-red-900/30 text-red-400 border border-red-900/50 hover:bg-red-900/50 rounded-xl transition-all" title="Summon Devil"><Flame size={18} /></button>
+            <button onClick={() => getAnalysis('angel')} disabled={isProcessing || !thought} className="p-2 bg-blue-900/30 text-blue-400 border border-blue-900/50 hover:bg-blue-900/50 rounded-xl transition-all disabled:opacity-30" title="Summon Angel"><Sparkles size={18} /></button>
+            <button onClick={() => getAnalysis('devil')} disabled={isProcessing || !thought} className="p-2 bg-red-900/30 text-red-400 border border-red-900/50 hover:bg-red-900/50 rounded-xl transition-all disabled:opacity-30" title="Summon Devil"><Flame size={18} /></button>
             <button onClick={getCollision} disabled={isProcessing} className="p-2 bg-fuchsia-900/30 text-fuchsia-400 border border-fuchsia-900/50 hover:bg-fuchsia-900/50 rounded-xl transition-all" title="Trigger Collision"><Zap size={18} /></button>
-            
-            {/* NEW: Log Interest Button */}
-            <button onClick={submitInterest} disabled={isProcessing || !thought} className="p-2 bg-amber-900/30 text-amber-400 border border-amber-900/50 hover:bg-amber-900/50 rounded-xl transition-all flex items-center gap-2 px-3" title="Save as Interest">
-              <Star size={16} />
-              <span className="text-xs font-bold uppercase hidden sm:block">Interest</span>
-            </button>
-
-            <button onClick={submitThought} disabled={isProcessing || !thought} className="p-2 bg-neutral-200 text-neutral-900 hover:bg-white rounded-xl transition-all flex items-center gap-2 px-4 font-bold">
-              <span>Log</span>
-              <Send size={16} />
-            </button>
+            <button onClick={() => submitAction('/api/interest', 'Interest Locked.')} disabled={isProcessing || !thought} className="p-2 bg-amber-900/30 text-amber-400 border border-amber-900/50 hover:bg-amber-900/50 rounded-xl transition-all disabled:opacity-30" title="Save as Interest"><Star size={18} /></button>
+            <button onClick={() => submitAction('/api/log', 'Thought Logged.')} disabled={isProcessing || !thought} className="p-2 bg-neutral-200 text-neutral-900 hover:bg-white rounded-xl transition-all font-bold disabled:opacity-30"><Send size={18} /></button>
           </div>
         </motion.div>
 
         <AnimatePresence>
-          {status && (
-            <motion.p className="text-sm text-blue-400 animate-pulse flex items-center gap-2">
-              <Database size={14} />{status}
-            </motion.p>
-          )}
-        </AnimatePresence>
-
-        <AnimatePresence>
-          {analysis && (
-            <motion.div className="p-6 bg-gradient-to-br from-neutral-900 to-[#0a0a0a] border border-neutral-800 rounded-2xl shadow-2xl whitespace-pre-wrap leading-relaxed text-neutral-300">
-              {analysis}
-            </motion.div>
-          )}
+          {status && <motion.p className="text-sm text-blue-400 animate-pulse">{status}</motion.p>}
+          {analysis && <motion.div className="p-6 bg-gradient-to-br from-neutral-900 to-[#0a0a0a] border border-neutral-800 rounded-2xl shadow-2xl whitespace-pre-wrap text-neutral-300">{analysis}</motion.div>}
         </AnimatePresence>
 
         <div className="h-px w-full bg-gradient-to-r from-transparent via-neutral-800 to-transparent my-12" />
 
-        {/* Memory Bank with Filter */}
         <motion.div>
+          {/* Enhanced Control Bar */}
           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4">
             <h2 className="text-lg font-bold text-neutral-500 flex items-center gap-2">
-              <Database size={18} />
-              Memory Lattice
+              <Database size={18} /> Lattice
             </h2>
             
-            {/* NEW: Filter Bar */}
-            <div className="relative w-full sm:w-64">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-500" size={16} />
-              <input 
-                type="text" 
-                placeholder="Filter by keyword or tag..." 
-                value={filterText}
-                onChange={(e) => setFilterText(e.target.value)}
-                className="w-full bg-neutral-900/50 border border-neutral-800 rounded-full py-2 pl-9 pr-4 text-sm text-neutral-300 focus:outline-none focus:border-blue-500/50 transition-all"
-              />
+            <div className="flex w-full sm:w-auto gap-3">
+              <select 
+                value={sortBy} 
+                onChange={(e) => setSortBy(e.target.value)}
+                className="bg-neutral-900/50 border border-neutral-800 rounded-lg px-3 py-2 text-sm text-neutral-300 outline-none focus:border-blue-500/50"
+              >
+                <option value="newest">Newest First</option>
+                <option value="oldest">Oldest First</option>
+                <option value="category">By Category</option>
+              </select>
+
+              <div className="relative w-full sm:w-56">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-500" size={14} />
+                <input 
+                  type="text" 
+                  placeholder="Filter year, tag, keyword..." 
+                  value={filterText}
+                  onChange={(e) => setFilterText(e.target.value)}
+                  className="w-full bg-neutral-900/50 border border-neutral-800 rounded-lg py-2 pl-9 pr-4 text-sm text-neutral-300 outline-none focus:border-blue-500/50"
+                />
+              </div>
             </div>
           </div>
           
           <div className="space-y-4">
             <AnimatePresence>
-              {filteredHistory.map((item) => (
+              {processedHistory.map((item) => (
                 <motion.div 
                   key={item.id} 
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
                   exit={{ opacity: 0 }}
-                  className={`p-5 border rounded-2xl transition-colors group ${
+                  className={`p-5 border rounded-2xl transition-colors group relative ${
                     item.category === 'Interest' ? 'bg-amber-900/10 border-amber-900/30' : 
                     item.category === 'Collision' ? 'bg-fuchsia-900/10 border-fuchsia-900/30' :
                     'bg-neutral-900/30 border-neutral-800/50'
                   }`}
                 >
-                  <p className="text-neutral-300">{item.content}</p>
-                  <div className="flex gap-2 mt-4 text-[10px] font-bold uppercase tracking-wider text-neutral-500">
+                  {/* Edit Mode vs Display Mode */}
+                  {editingId === item.id ? (
+                    <div className="space-y-3">
+                      <textarea 
+                        className="w-full bg-neutral-950 border border-neutral-700 rounded-lg p-3 text-neutral-200 outline-none resize-none min-h-[100px]"
+                        value={editContent}
+                        onChange={(e) => setEditContent(e.target.value)}
+                      />
+                      <div className="flex gap-2">
+                        <button onClick={() => saveEdit(item.id)} className="flex items-center gap-1 text-xs bg-green-900/30 text-green-400 px-3 py-1.5 rounded-lg border border-green-900/50 hover:bg-green-900/50"><Check size={14}/> Save</button>
+                        <button onClick={() => setEditingId(null)} className="flex items-center gap-1 text-xs bg-neutral-800 text-neutral-400 px-3 py-1.5 rounded-lg border border-neutral-700 hover:bg-neutral-700"><X size={14}/> Cancel</button>
+                      </div>
+                    </div>
+                  ) : (
+                    <>
+                      <p className="text-neutral-300 pr-12">{item.content}</p>
+                      
+                      {/* Action Buttons (Hidden until hover on Desktop, visible on Mobile) */}
+                      <div className="absolute top-4 right-4 flex gap-2 opacity-100 sm:opacity-0 group-hover:opacity-100 transition-opacity">
+                        <button onClick={() => { setEditingId(item.id); setEditContent(item.content); }} className="p-1.5 text-neutral-500 hover:text-blue-400 hover:bg-blue-900/20 rounded-md"><Edit2 size={16} /></button>
+                        <button onClick={() => deleteThought(item.id)} className="p-1.5 text-neutral-500 hover:text-red-400 hover:bg-red-900/20 rounded-md"><Trash2 size={16} /></button>
+                      </div>
+                    </>
+                  )}
+
+                  <div className="flex flex-wrap gap-2 mt-4 text-[10px] font-bold uppercase tracking-wider text-neutral-500 items-center">
                     <span className="bg-neutral-950 border border-neutral-800 px-3 py-1.5 rounded-full flex items-center gap-1.5">
                       {item.category === 'Interest' ? <Star size={10} className="text-amber-500" /> : <Tag size={10} />}
                       {item.category}
                     </span>
-                    <span className="bg-neutral-950 border border-neutral-800 px-3 py-1.5 rounded-full">
-                      {item.sentiment}
+                    <span className="bg-neutral-950 border border-neutral-800 px-3 py-1.5 rounded-full">{item.sentiment}</span>
+                    <span className="flex items-center gap-1.5 ml-auto opacity-70">
+                      <Calendar size={10} /> {formatDate(item.created_at)}
                     </span>
                   </div>
                 </motion.div>
               ))}
             </AnimatePresence>
-            
-            {filteredHistory.length === 0 && (
-              <p className="text-neutral-600 italic text-center py-8">No memories match your filter.</p>
-            )}
           </div>
         </motion.div>
       </div>

@@ -12,52 +12,48 @@ export async function POST(req: Request) {
   try {
     const { currentThought } = await req.json();
 
-    // 1. Fetch EVERYTHING except the current thought
-    const { data: allItems, error } = await supabase
-      .from('thoughts')
-      .select('content, category')
-      .neq('content', currentThought);
+    const { data: allItems, error } = await supabase.from('thoughts').select('content, category');
 
-    if (error || !allItems || allItems.length === 0) {
-      return NextResponse.json({ analysis: "The lattice is too empty!" });
+    if (error || !allItems || allItems.length < 2) {
+      return NextResponse.json({ analysis: "Need at least 2 thoughts in the matrix to collide!" });
     }
 
-    // 2. Separate into Interests and normal Thoughts
-    const interests = allItems.filter(i => i.category === 'Interest');
-    const thoughts = allItems.filter(i => i.category !== 'Interest');
+    let thoughtA = currentThought;
+    let thoughtB = "";
+    let targetType = "Past Data";
 
-    // 3. Flip a coin: 50% chance to collide with an Interest (if you have any)
-    let pool = thoughts;
-    let targetType = "Past Thought";
-
-    if (interests.length > 0 && Math.random() > 0.5) {
-      pool = interests;
-      targetType = "Core Interest";
+    // If input is empty, pick two random thoughts from the DB!
+    if (!thoughtA) {
+      const randomA = allItems[Math.floor(Math.random() * allItems.length)];
+      thoughtA = randomA.content;
+      
+      const remainingItems = allItems.filter(i => i.content !== thoughtA);
+      const randomB = remainingItems[Math.floor(Math.random() * remainingItems.length)];
+      thoughtB = randomB.content;
+      targetType = randomB.category;
+    } else {
+      // If user typed something, pick one random thought
+      const remainingItems = allItems.filter(i => i.content !== thoughtA);
+      const randomB = remainingItems[Math.floor(Math.random() * remainingItems.length)];
+      thoughtB = randomB.content;
+      targetType = randomB.category;
     }
-
-    // Fallback if the chosen pool is empty
-    if (pool.length === 0) pool = allItems;
-
-    // 4. Pick a TRUE random item from the pool
-    const randomItem = pool[Math.floor(Math.random() * pool.length)];
-    const targetContent = randomItem.content;
 
     const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
     
     const prompt = `
       You are the Collision Generator. Smash these two concepts together.
+      Thought A: "${thoughtA}"
+      Thought B (${targetType}): "${thoughtB}"
       
-      Thought A (Current): "${currentThought}"
-      Target B (${targetType}): "${targetContent}"
-      
-      Write a short, punchy paragraph detailing the new idea born from this collision.
+      Write a short, punchy paragraph detailing the new idea born from this collision. 
       CRITICAL: Tone it down. Use plain, everyday language. No academic jargon.
     `;
 
     const result = await model.generateContent(prompt);
     const text = result.response.text();
     
-    const finalOutput = `💥 COLLISION DETECTED 💥\n\nTarget (${targetType}): "${targetContent}"\n\nCurrent: "${currentThought}"\n\nSynthesis: ${text}`;
+    const finalOutput = `💥 COLLISION DETECTED 💥\n\nConcept A: "${thoughtA}"\n\nConcept B: "${thoughtB}"\n\nSynthesis: ${text}`;
 
     await supabase.from('thoughts').insert([{
       content: finalOutput,
