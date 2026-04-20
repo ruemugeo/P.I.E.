@@ -1,20 +1,23 @@
 import { NextRequest, NextResponse } from 'next/server';
 
 export function middleware(req: NextRequest) {
-  // Get the authorization header from the request
   const basicAuth = req.headers.get('authorization');
 
   if (basicAuth) {
-    const authValue = basicAuth.split(' ')[1];
-    const [user, pwd] = atob(authValue).split(':');
+    try {
+      const authValue = basicAuth.split(' ')[1];
+      const decoded = atob(authValue);
+      const [user, pwd] = decoded.split(':');
 
-    // CHANGE THESE to whatever username/password you want!
-    if (user === 'admin' && pwd === 'ruemu@2004') {
-      return NextResponse.next();
+      if (user === 'admin' && pwd === 'ruemu@2004') {
+        return NextResponse.next();
+      }
+    } catch (e) {
+      // If decoding fails, don't crash the server, just ask for the password again
+      console.log('Auth error ignored');
     }
   }
 
-  // If no auth or wrong auth, trigger the browser's login popup
   return new NextResponse('Unauthorized access to the Cognitive Engine.', {
     status: 401,
     headers: {
@@ -23,7 +26,7 @@ export function middleware(req: NextRequest) {
   });
 }
 
-// This ensures the lock applies to every single page and API route
+// CRITICAL FIX: Tell the lock to ignore Vercel's internal system files
 export const config = {
-  matcher: '/:path*',
+  matcher: ['/((?!_next/static|_next/image|favicon.ico).*)'],
 };
