@@ -31,14 +31,15 @@ export async function POST(req: Request) {
     // 2. Smash them together using Gemini
 const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });    
     const prompt = `
-      You are the Collision Generator, an AI designed to find profound, lateral connections between completely unrelated ideas.
+      You are the Collision Generator, an AI designed to find lateral connections between completely unrelated ideas.
       
       Thought A (Current): "${currentThought}"
       Thought B (Past): "${pastThought}"
       
-      Your task: Smash these two thoughts together. Find the hidden thread, metaphor, or philosophical connection that binds them. 
-      Write a short, punchy, and mind-expanding paragraph detailing the new idea that is born from this collision.
-      Do not use pleasantries. Be bold and highly conceptual.
+      Your task: Smash these two thoughts together. Find the hidden thread or metaphor that binds them. 
+      Write a short, punchy paragraph detailing the new idea that is born from this collision.
+      
+      CRITICAL INSTRUCTION: Tone it down. Use plain, everyday language. Do NOT use dense philosophical jargon, hyper-academic terms, or overly complex vocabulary. The insight should be profound, but the words should be incredibly easy to understand for anyone.
     `;
 
     const result = await model.generateContent(prompt);
