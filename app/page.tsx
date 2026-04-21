@@ -1,9 +1,9 @@
 'use client';
 
+import Link from 'next/link';
 import { useState, useEffect, useMemo, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { BrainCircuit, Sparkles, Flame, Send, Database, Tag, Zap, Star, Search, Trash2, Edit2, Check, X, Calendar, Mic, Plus, AreaChart, BotMessageSquare, Clock } from 'lucide-react';
-
+import { BrainCircuit, Sparkles, Flame, Send, Database, Tag, Zap, Star, Search, Trash2, Edit2, Check, X, Calendar, Mic, Plus, AreaChart, BotMessageSquare, Clock, CheckCircle2 } from 'lucide-react';
 type Thought = {
   id: number;
   content: string;
@@ -162,9 +162,9 @@ export default function Home() {
       <motion.nav initial={{ x: -100, opacity: 0 }} animate={{ x: 0, opacity: 1 }} className={`fixed left-4 top-1/2 -translate-y-1/2 w-20 py-8 flex flex-col items-center gap-10 ${GLASS_BG} ${CARD_ROUND} shadow-ao z-50 hidden lg:flex`}>
         <motion.div animate={{ rotate: [0, 10, -10, 0] }} transition={{ repeat: Infinity, duration: 5 }} className="p-3 bg-neutral-900 rounded-xl border border-white/5"><BrainCircuit className="text-blue-400" size={24}/></motion.div>
         <div className="flex flex-col gap-8 text-neutral-600">
-          <button className="p-3 hover:text-white hover:bg-neutral-900 rounded-xl transition-all"><Database size={20}/></button>
-          <button className="p-3 hover:text-white hover:bg-neutral-900 rounded-xl transition-all"><AreaChart size={20}/></button>
-          <button className="p-3 hover:text-white hover:bg-neutral-900 rounded-xl transition-all"><BotMessageSquare size={20}/></button>
+          <Link href="/" className="p-3 text-white bg-neutral-800 rounded-xl transition-all shadow-inner"><Database size={20}/></Link>
+          <Link href="/tasks" className="p-3 hover:text-white hover:bg-neutral-900 rounded-xl transition-all"><CheckCircle2 size={20}/></Link>
+          <Link href="/wiki" className="p-3 hover:text-white hover:bg-neutral-900 rounded-xl transition-all"><BotMessageSquare size={20}/></Link>
           <div className="h-px w-full bg-white/5 my-2"></div>
           <button className="p-3 hover:text-white hover:bg-neutral-900 rounded-xl transition-all"><Calendar size={20}/></button>
         </div>
@@ -173,13 +173,13 @@ export default function Home() {
       <div className="lg:ml-28 w-full max-w-7xl mx-auto space-y-12">
         
         {/* 2. THE MAIN CORTEX CANVAS */}
-        <section className="w-full grid grid-cols-1 md:grid-cols-2 gap-10 items-center">
-          <motion.div initial={{ y: -50, opacity: 0 }} animate={{ y: 0, opacity: 1 }}>
-            <h1 className={`text-4xl md:text-5xl ${FONT_TA_TRACK} bg-gradient-to-r from-neutral-100 via-neutral-400 to-neutral-700 bg-clip-text text-transparent`}>The BirdsEyes Cortex</h1>
-            <p className={`${TEXT_SUB} mt-2`}>Version 2.0 • Private Spatial Lattice • V3 Features Room</p>
+        <section className="w-full flex flex-col md:flex-row justify-between items-start md:items-center gap-10">
+          <motion.div initial={{ y: -50, opacity: 0 }} animate={{ y: 0, opacity: 1 }} className="flex flex-col gap-2">
+            <h1 className={`text-4xl md:text-5xl ${FONT_TA_TRACK} bg-gradient-to-r from-neutral-100 via-neutral-400 to-neutral-700 bg-clip-text text-transparent`}>The PIE Cortex</h1>
+            <p className={`${TEXT_SUB}`}>Version 2.1 • Personal Intelligence Engine</p>
           </motion.div>
           
-          <div className="flex flex-col md:items-end md:justify-center gap-3">
+          <div className="flex flex-col md:items-end justify-center gap-3">
             <span className={TEXT_SUB}>Central Mental Activity (28D Matrix)</span>
             <SpatialHeatmap history={history} />
           </div>
@@ -215,10 +215,10 @@ export default function Home() {
             </div>
           </header>
           
-          <motion.div variants={containerVariants} initial="hidden" animate="visible" className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
+          <motion.div variants={containerVariants} initial="hidden" animate="visible" className="flex flex-wrap gap-8">
             <AnimatePresence>
               {processedHistory.map((item) => (
-                <motion.div key={item.id} layout variants={cardVariants} whileHover={{ y: -8, boxShadow: '0 30px 60px -10px rgba(56, 189, 248, 0.25)' }} className={`p-8 bg-neutral-950 rounded-3xl border border-white/5 transition-all group relative shadow-ao`}>
+                <motion.div key={item.id} layout variants={cardVariants} whileHover={{ y: -8, boxShadow: '0 30px 60px -10px rgba(56, 189, 248, 0.25)' }} className={`w-full sm:w-[calc(50%-1rem)] lg:w-[calc(33.333%-1.33rem)] flex flex-col justify-between p-8 bg-neutral-950 rounded-3xl border border-white/5 transition-all group relative shadow-ao`}>
                   
                   {editingId === item.id ? (
                     <div className="space-y-4">

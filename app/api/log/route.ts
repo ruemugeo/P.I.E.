@@ -1,56 +1,97 @@
-export const dynamic = 'force-dynamic';
 import { NextResponse } from 'next/server';
-import { GoogleGenerativeAI } from '@google/generative-ai';
 import { createClient } from '@supabase/supabase-js';
+import { GoogleGenerativeAI } from '@google/generative-ai';
+
+// Fallback to ANON key if SERVICE_ROLE is missing in .env
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
+const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
+const supabase = createClient(supabaseUrl, supabaseKey);
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!);
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-);
 
 export async function POST(req: Request) {
   try {
     const { content } = await req.json();
+    if (!content) return NextResponse.json({ error: 'No content provided' }, { status: 400 });
 
-    // Make sure to use the active model!
-    const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
-    
-    // The Upgraded Ghost Architecture Prompt
+    console.log("1. Received thought:", content);
+
+    // Summon the PIE Ghost
+    const model = genAI.getGenerativeModel({ 
+      model: 'gemini-2.5-flash',
+      generationConfig: { responseMimeType: "application/json" }
+    });    
     const prompt = `
-      Analyze this thought deeply: "${content}"
+      You are the core processor for the PIE (Personal Intelligence Engine).
+      Analyze the following raw thought from the user: "${content}"
       
-      You must return a STRICT JSON object with exactly three keys. Do NOT wrap it in markdown blockquotes, just return the raw JSON.
-      
+      Extract the following data and return it strictly as a JSON object (DO NOT wrap it in markdown code blocks):
+      1. "category": A single word categorization (e.g., Synthesis, Collision, Interest, System, Vent, Idea).
+      2. "sentiment": A 1-3 word description of the emotional/logical tone, optionally including an emoji.
+      3. "tasks": An array of actionable items found in the thought. If none, return an empty array [].
+         For each task, provide:
+         - "title": The action item.
+         - "priority": "high", "medium", or "low" based on urgency.
+
+      Example output format:
       {
-        "category": "A broad 1-2 word category (e.g., Tech, Philosophy, Memory)",
-        "sentiment": "A 1-2 word emotional state (e.g., Anxious, Euphoric, Analytical)",
-        "ghostTag": "A deep psychological archetype, mental model, or philosophical school representing the subtext (e.g., Existentialism, First Principles, Cognitive Dissonance, Paradigm Shift)"
+        "category": "Idea",
+        "sentiment": "focused 🧠",
+        "tasks": [
+          { "title": "Buy groceries", "priority": "medium" }
+        ]
       }
     `;
 
     const result = await model.generateContent(prompt);
-    let text = result.response.text().trim();
+    let rawText = result.response.text();
     
-    // Strip markdown formatting just in case the AI disobeys
-    if (text.startsWith('```json')) text = text.replace(/```json/g, '');
-    if (text.startsWith('```')) text = text.replace(/```/g, '');
+    console.log("2. Raw Gemini Response:", rawText);
+
+    // AGGRESSIVE JSON SANITIZER (Strips markdown backticks and 'json' text)
+    rawText = rawText.replace(/```json/gi, '').replace(/```/g, '').trim();
     
-    const aiData = JSON.parse(text);
+    const aiResponse = JSON.parse(rawText);
+    console.log("3. Cleaned & Parsed AI Data:", aiResponse);
 
-    // Combine the sentiment and Ghost Tag so it fits perfectly in our UI without DB changes
-    const enhancedSentiment = `${aiData.sentiment} • 👻 ${aiData.ghostTag}`;
+    // Insert the Thought into Supabase
+    const { data: thoughtData, error: thoughtError } = await supabase
+      .from('thoughts')
+      .insert([{ 
+        content, 
+        category: aiResponse.category || 'Log', 
+        sentiment: aiResponse.sentiment || 'neutral' 
+      }])
+      .select()
+      .single();
 
-    await supabase.from('thoughts').insert([{
-      content: content,
-      category: aiData.category,
-      sentiment: enhancedSentiment
-    }]);
+    if (thoughtError) {
+      console.error("Supabase Thought Insert Error:", thoughtError);
+      throw thoughtError;
+    }
 
-    return NextResponse.json({ success: true });
+    // If tasks were found, insert them into the Tasks table
+    if (aiResponse.tasks && Array.isArray(aiResponse.tasks) && aiResponse.tasks.length > 0) {
+      const tasksToInsert = aiResponse.tasks.map((task: any) => ({
+        title: task.title,
+        priority: task.priority || 'medium',
+        status: 'todo',
+        thought_id: thoughtData.id
+      }));
+
+      const { error: taskError } = await supabase.from('tasks').insert(tasksToInsert);
+      
+      if (taskError) {
+        console.error("Supabase Task Extraction Error:", taskError);
+      } else {
+        console.log(`4. Successfully saved ${tasksToInsert.length} tasks to database.`);
+      }
+    }
+
+    return NextResponse.json({ success: true, extractedTasks: aiResponse.tasks?.length || 0 });
 
   } catch (error) {
-    console.error("Logging Error:", error);
-    return NextResponse.json({ error: 'Failed to process thought' }, { status: 500 });
+    console.error('LATTICE FATAL ERROR:', error);
+    return NextResponse.json({ error: 'Failed to process thought.' }, { status: 500 });
   }
 }
