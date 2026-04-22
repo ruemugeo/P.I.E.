@@ -103,7 +103,7 @@ export default function Home() {
           }}
           className="w-full p-4 mt-4 rounded-2xl bg-neutral-900 border border-white/5 text-neutral-400 hover:text-white transition-all"
         >
-          Load Matrix History
+          Load History
         </button>
         </div>
       </div>
