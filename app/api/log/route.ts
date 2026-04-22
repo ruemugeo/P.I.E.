@@ -13,22 +13,30 @@ const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!);
 const CHAT_MODELS = ['gemini-2.5-flash', 'gemini-2.5-flash-lite', 'gemini-2.0-flash'];
 
 async function generateWithFallback(prompt: string) {
+  let lastError = null;
+
   for (const modelName of CHAT_MODELS) {
     try {
-      console.log(`🤖 Fallback check: Trying ${modelName}...`);
+      console.log(`🤖 Engine check: Trying ${modelName}...`);
       
-      const model = genAI.getGenerativeModel({ 
-        model: modelName,
-        // 🛡️ SYSTEM INSTRUCTION: This tells the AI what its "job" is.
-        systemInstruction: "You are a data extraction engine. You must output ONLY valid raw JSON. Do not include any conversational text, explanations, or markdown code blocks.",
-      }, { apiVersion: 'v1' });
+      const model = genAI.getGenerativeModel({ model: modelName }, { apiVersion: 'v1' });
 
-      // We pass the prompt directly. Because of the System Instruction, 
-      // the model won't say "Here is your JSON".
-      const result = await model.generateContent(prompt);
+      // We combine the instruction and prompt into one clear request.
+      // This is the most compatible way across all SDK versions.
+      const finalPrompt = `
+        INSTRUCTION: You are a JSON-only data extractor. 
+        Output ONLY raw JSON. No conversational text.
+        
+        DATA TO ANALYZE: "${prompt}"
+        
+        REQUIRED JSON FORMAT: 
+        {"category": "One word", "sentiment": "word+emoji", "tasks": []}
+      `;
+
+      const result = await model.generateContent(finalPrompt);
       const text = result.response.text().trim();
       
-      // Clean up any rogue backticks just in case the AI slips up
+      // Safety: Strip away any markdown code blocks if the AI includes them
       const cleanJson = text.replace(/```json/gi, '').replace(/```/g, '').trim();
       
       return { 
@@ -36,15 +44,14 @@ async function generateWithFallback(prompt: string) {
         activeModel: modelName 
       };
     } catch (e: any) {
-      // 429 = Quota, 503 = Server Busy
-      if (e.status === 429 || e.status === 503) {
-        console.warn(`⚠️ ${modelName} unavailable, falling back...`);
-        continue;
-      }
-      throw e; // If it's a real code error, stop here
+      lastError = e;
+      // 🛡️ IMPROVED FALLBACK: 
+      // If we hit a 400 (Bad Request), 429 (Quota), or 503 (Busy), try the next model.
+      console.warn(`⚠️ ${modelName} failed with status ${e.status}. Error: ${e.message}`);
+      continue; 
     }
   }
-  throw new Error("All Gemini models are currently at capacity.");
+  throw new Error(`All Gemini models failed. Last error: ${lastError?.message}`);
 }
 
 export async function POST(req: Request) {
