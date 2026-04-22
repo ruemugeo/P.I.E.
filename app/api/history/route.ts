@@ -13,7 +13,7 @@ export async function GET() {
       .from('thoughts')
       .select('id, content, category, sentiment, created_at')
       .order('created_at', { ascending: false })
-      .limit(10);
+      .limit(100);
 
     if (error) throw error;
 

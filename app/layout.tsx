@@ -1,4 +1,10 @@
-import type { Metadata } from "next";
+import type { Metadata } from 'next'
+
+export const metadata: Metadata = {
+  title: 'PIE | Personal Intelligence Engine',
+  description: 'AI-augmented secondary cortex and action matrix.',
+}
+
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 
