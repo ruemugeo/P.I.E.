@@ -16,7 +16,7 @@ export async function POST(req: Request) {
     // 1. Embed user query (768 Dimensions)
 // 1. Initialize the NEW stable model
 const embeddingModel = genAI.getGenerativeModel(
-  { model: "gemini-embedding-001" }, // This is the 2026 winner
+  { model: "gemini-embedding-2" }, // This is the 2026 winner
   { apiVersion: 'v1' }
 );
 
