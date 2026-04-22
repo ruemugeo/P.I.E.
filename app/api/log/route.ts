@@ -5,6 +5,22 @@ import { GoogleGenerativeAI } from '@google/generative-ai';
 const getSupabase = () => createClient(process.env.NEXT_PUBLIC_SUPABASE_URL || '', process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '');
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!);
 
+// 🛠️ THE SHIELD: A helper function to automatically retry failed AI calls
+async function fetchWithRetry(apiCall: () => Promise<any>, maxRetries = 3, delayMs = 2000) {
+  for (let i = 0; i < maxRetries; i++) {
+    try {
+      return await apiCall();
+    } catch (error: any) {
+      if (error.status === 503 && i < maxRetries - 1) {
+        console.warn(`Google API 503 Overloaded. Retrying in ${delayMs}ms... (Attempt ${i + 1} of ${maxRetries})`);
+        await new Promise(res => setTimeout(res, delayMs));
+      } else {
+        throw error; // If it's not a 503, or we are out of retries, throw the real error
+      }
+    }
+  }
+}
+
 export async function POST(req: Request) {
   try {
     const { content } = await req.json();
@@ -13,12 +29,13 @@ export async function POST(req: Request) {
     const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash', generationConfig: { responseMimeType: "application/json" } });
     const prompt = `Analyze: "${content}". Return strictly JSON: {"category": "One word", "sentiment": "word+emoji", "tasks": [{"title": "Action", "priority": "high|medium|low"}]}`;
     
-    const result = await model.generateContent(prompt);
+    // Wrap the text generation in the retry shield
+    const result = await fetchWithRetry(() => model.generateContent(prompt));
     const aiResponse = JSON.parse(result.response.text().replace(/```json/gi, '').replace(/```/g, '').trim());
 
-    // Generate Vector Embedding for True RAG
+    // Wrap the embedding generation in the retry shield
     const embeddingModel = genAI.getGenerativeModel({ model: 'text-embedding-004' });
-    const embeddingResult = await embeddingModel.embedContent(content);
+    const embeddingResult = await fetchWithRetry(() => embeddingModel.embedContent(content));
     const embedding = embeddingResult.embedding.values;
 
     const supabase = getSupabase();
@@ -35,11 +52,12 @@ export async function POST(req: Request) {
       })));
     }
     return NextResponse.json({ success: true });
-  } catch (error) {
+    
+  } catch (error: any) {
     console.error('🔥 LOG ROUTE FATAL ERROR:', error);
     return NextResponse.json({ 
       error: 'Failed to process', 
-      details: error instanceof Error ? error.message : String(error) 
+      details: error.message || String(error) 
     }, { status: 500 });
   }
 }
