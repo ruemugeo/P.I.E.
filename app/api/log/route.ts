@@ -34,7 +34,7 @@ export async function POST(req: Request) {
     const aiResponse = JSON.parse(result.response.text().replace(/```json/gi, '').replace(/```/g, '').trim());
 
     // Wrap the embedding generation in the retry shield
-    const embeddingModel = genAI.getGenerativeModel({ model: 'text-embedding-005' });
+    const embeddingModel = genAI.getGenerativeModel({ model: 'text-embedding-004' });
     const embeddingResult = await fetchWithRetry(() => embeddingModel.embedContent(content));
     const embedding = embeddingResult.embedding.values;
 

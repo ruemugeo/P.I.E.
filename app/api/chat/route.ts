@@ -10,7 +10,7 @@ export async function POST(req: Request) {
     const { message } = await req.json();
     
     // 1. Embed user query
-    const embeddingModel = genAI.getGenerativeModel({ model: 'text-embedding-005' });
+    const embeddingModel = genAI.getGenerativeModel({ model: 'text-embedding-004' });
     const { embedding } = await embeddingModel.embedContent(message);
 
     const supabase = getSupabase();
