@@ -1,26 +1,42 @@
 import { NextResponse } from 'next/server';
 import { GoogleGenAI } from '@google/genai';
 
+<<<<<<< HEAD
 const genAI = new GoogleGenAI(process.env.GEMINI_API_KEY!);
+=======
+// 🛡️ FIX 1: Prevent Vercel from trying to "pre-render" this API route
+export const dynamic = 'force-dynamic';
+>>>>>>> 324b17d8785eb104c7d2780e0284548b35e91866
 
 export async function POST(req: Request) {
   try {
-    const { content, mode } = await req.json();
+    const { content } = await req.json();
 
-const proModel = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });    
-    let prompt = "";
-    if (mode === 'devil') {
-      prompt = `Act as a Devil's Advocate. Brutally but constructively deconstruct this thought. Find logical fallacies, present counter-arguments, and point out blind spots. Keep your response extremely concise, punchy, and under 150 words. Thought: "${content}"`;
-    } else {
-      prompt = `Act as an Angel Companion. Validate this thought. Expand on its potential and hype up the core insight. Keep your response extremely concise, energetic, and under 150 words. Thought: "${content}"`;
+    // 🛡️ FIX 2: Check for API Key inside the handler to avoid build crashes
+    const apiKey = process.env.GEMINI_API_KEY;
+    if (!apiKey) {
+      return NextResponse.json({ error: "API Key missing" }, { status: 500 });
     }
 
-    const result = await proModel.generateContent(prompt);
-    const analysis = result.response.text();
+    // 🛡️ FIX 3: Use the new class name 'GoogleGenAI'
+    const ai = new GoogleGenAI({ apiKey });
 
-    return NextResponse.json({ analysis });
-  } catch (error) {
-    console.error("Analysis Error:", error);
-    return NextResponse.json({ error: 'Failed to analyze thought' }, { status: 500 });
+    const response = await ai.models.generateContent({
+      model: 'gemini-2.5-flash',
+      contents: `Perform a deep analysis on this thought: "${content}". 
+                 Categorize it and suggest 3 actionable next steps. 
+                 Format as JSON: {"category": "...", "steps": ["...", "...", "..."]}`,
+      config: {
+        responseMimeType: "application/json"
+      }
+    });
+
+    return NextResponse.json({ 
+      analysis: JSON.parse(response.text || "{}") 
+    });
+
+  } catch (error: any) {
+    console.error('🔥 ANALYZE ERROR:', error);
+    return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }

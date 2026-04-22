@@ -17,7 +17,6 @@ export function middleware(req: NextRequest) {
     }
   }
 
-  // Edge-safe: return null instead of a text string
   return new NextResponse(null, {
     status: 401,
     headers: {
@@ -26,7 +25,7 @@ export function middleware(req: NextRequest) {
   });
 }
 
-// CRITICAL FIX: Exclude system files AND internal /api calls
+// SECURED: Protects UI and /api calls
 export const config = {
-  matcher: ['/((?!api|_next/static|_next/image|favicon.ico).*)'],
+  matcher: ['/((?!_next/static|_next/image|favicon.ico).*)'],
 };
