@@ -43,14 +43,14 @@ export default function ChatPage() {
           <Link href="/" className="p-3 hover:text-white hover:bg-neutral-800 rounded-xl transition-all"><Database size={20}/></Link>
           <Link href="/tasks" className="p-3 hover:text-white hover:bg-neutral-800 rounded-xl transition-all"><CheckCircle2 size={20}/></Link>
           <Link href="/chat" className="p-3 text-white bg-neutral-800 rounded-xl transition-all shadow-inner"><MessageSquare size={20}/></Link>
-          <Link href="/wiki" className="p-3 text-white bg-neutral-800 rounded-xl transition-all shadow-inner"><BookOpen size={20}/></Link>
+          <Link href="/wiki" className="p-3 text-white bg-neutral-800 rounded-xl transition-all transition-all"><BookOpen size={20}/></Link>
         </div>
       </motion.nav>
 
       <nav className="fixed bottom-0 left-0 w-full p-4 bg-[#060608]/95 backdrop-blur-xl border-t border-white/5 z-50 lg:hidden flex justify-around items-center text-neutral-500 pb-8">
         <Link href="/" className="p-3 hover:text-white flex flex-col items-center gap-1 transition-all"><Database size={20}/></Link>
         <Link href="/tasks" className="p-3 hover:text-white flex flex-col items-center gap-1 transition-all"><CheckCircle2 size={20}/></Link>
-        <Link href="/chat" className="p-3 text-white flex flex-col items-center gap-1 transition-all"><MessageSquare size={20}/></Link>
+        <Link href="/chat" className="p-3 text-white flex flex-col items-center gap-1 shadow-inner"><MessageSquare size={20}/></Link>
         <Link href="/wiki" className="p-3 text-white flex flex-col items-center gap-1 transition-all"><BookOpen size={20}/></Link>
       </nav>
 
