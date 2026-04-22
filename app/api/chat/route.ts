@@ -10,8 +10,7 @@ export async function POST(req: Request) {
     const { message } = await req.json();
     
     // 1. Embed user query
-    const embeddingModel = genAI.getGenerativeModel({ model: 'text-embedding-004' });
-    const { embedding } = await embeddingModel.embedContent(message);
+const embeddingModel = genAI.getGenerativeModel({ model: "text-embedding-004" });    const { embedding } = await embeddingModel.embedContent(message);
 
     const supabase = getSupabase();
     // 2. Vector Search (Match top 10 most relevant thoughts ever, not just recent)
