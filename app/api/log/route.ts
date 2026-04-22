@@ -9,91 +9,53 @@ const getSupabase = () => createClient(
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!);
 
-// 🪜 THE FALLBACK LADDER
-// We list models from "Best" to "Fastest/Available"
-const CHAT_MODELS = [
-  'gemini-2.5-flash',
-  'gemini-2.5-flash-lite',
-  'gemini-2.0-flash',
-  'gemini-2.0-flash-lite'
-];
+// Fallback Ladder for Quota Management
+const CHAT_MODELS = ['gemini-2.5-flash', 'gemini-2.5-flash-lite', 'gemini-2.0-flash'];
 
 async function generateWithFallback(prompt: string) {
-  let lastError = null;
-
   for (const modelName of CHAT_MODELS) {
     try {
-      console.log(`🤖 Attempting with: ${modelName}...`);
       const model = genAI.getGenerativeModel({ model: modelName }, { apiVersion: 'v1' });
-      
       const result = await model.generateContent(prompt);
-      const text = result.response.text();
-      
-      // If we got here, it worked! Return the text and the model name
       return { 
-        data: JSON.parse(text.replace(/```json/gi, '').replace(/```/g, '').trim()),
+        data: JSON.parse(result.response.text().replace(/```json/gi, '').replace(/```/g, '').trim()),
         activeModel: modelName 
       };
-    } catch (error: any) {
-      lastError = error;
-      // If the error is Quota (429) or Overloaded (503), try the next model
-      if (error.status === 429 || error.status === 503) {
-        console.warn(`⚠️ ${modelName} failed (Quota/Busy). Switching to next model...`);
-        continue; 
-      }
-      // If it's a different error (like a syntax error), stop and throw
-      throw error;
+    } catch (e: any) {
+      if (e.status === 429 || e.status === 503) continue;
+      throw e;
     }
   }
-  throw new Error(`All models failed. Last error: ${lastError?.message}`);
+  throw new Error("All models hit quota.");
 }
 
 export async function POST(req: Request) {
   try {
     const { content } = await req.json();
-    if (!content) return NextResponse.json({ error: 'No content' }, { status: 400 });
 
-    // 1. AI Analysis with Fallback
-    const prompt = `Analyze: "${content}". Return strictly JSON: {"category": "One word", "sentiment": "word+emoji", "tasks": [{"title": "Action", "priority": "high|medium|low"}]}`;
-    const { data: aiResponse, activeModel } = await generateWithFallback(prompt);
+    // 1. Analysis
+    const { data: aiResponse, activeModel } = await generateWithFallback(`Analyze: ${content}. Return JSON: {"category":"string","sentiment":"string","tasks":[]}`);
 
-    // 2. Vector Embedding (Note: Embedding models usually have separate, higher quotas)
-    const embeddingModel = genAI.getGenerativeModel({ model: "text-embedding-004" }, { apiVersion: 'v1' });
+    // 2. Embedding (768 Dimensions)
+    const embeddingModel = genAI.getGenerativeModel({ model: "gemini-embedding-001" }, { apiVersion: 'v1' });
     const embeddingResult = await embeddingModel.embedContent({
-      content: { role: "user", parts: [{ text: content }] },
+      content: { role: "user", parts: [{ text: content }] }, // 👈 Keep 'content' here
       taskType: "RETRIEVAL_DOCUMENT" as any,
       outputDimensionality: 768
     } as any);
-    const embedding = embeddingResult.embedding.values;
 
     const supabase = getSupabase();
-    
-    const { data: thoughtData, error: thoughtError } = await supabase
-      .from('thoughts')
-      .insert([{ 
-        content, 
-        category: aiResponse.category || 'Log', 
-        sentiment: aiResponse.sentiment || 'neutral', 
-        embedding 
-      }])
-      .select().single();
+    const { data: thought, error } = await supabase.from('thoughts').insert([{
+      content,
+      category: aiResponse.category,
+      embedding: embeddingResult.embedding.values
+    }]).select().single();
 
-    if (thoughtError) throw thoughtError;
+    if (error) throw error;
 
-    if (aiResponse.tasks?.length > 0) {
-      await supabase.from('tasks').insert(aiResponse.tasks.map((t: any) => ({
-        title: t.title, priority: t.priority, status: 'todo', thought_id: thoughtData.id
-      })));
-    }
-
-    // Return the success + which model actually did the work
-    return NextResponse.json({ 
-      success: true, 
-      modelUsed: activeModel 
-    });
-
+    return NextResponse.json({ success: true, modelUsed: activeModel });
   } catch (error: any) {
-    console.error('🔥 FATAL ERROR:', error);
+    console.error('🔥 LOG ERROR:', error);
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }
