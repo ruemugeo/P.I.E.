@@ -2,55 +2,99 @@ import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { GoogleGenAI } from '@google/genai';
 
+export const dynamic = 'force-dynamic';
+
 const getSupabase = () => createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL || '', 
-  process.env.SUPABASE_SERVICE_ROLE_KEY || ''
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.SUPABASE_SERVICE_ROLE_KEY!
 );
 
 const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
-const CHAT_MODELS = ['gemini-2.5-flash', 'gemini-2.5-flash-lite'];
+
+// The Model Rotation Array
+const CHAT_MODELS = [
+  'gemini-2.5-flash', 
+  'gemini-2.5-flash-lite', 
+  'gemini-1.5-flash', 
+  'gemini-1.5-pro'
+];
+
+async function generateWithFallback(prompt: string) {
+  let lastError = null;
+
+  for (const modelName of CHAT_MODELS) {
+    try {
+      // Reverting to the 'ai.models.generateContent' pattern that worked in your logger
+      const response = await ai.models.generateContent({
+        model: modelName,
+        contents: prompt,
+        config: {
+          // You can add systemInstructions here if needed for the chat
+          systemInstruction: "You are the Lattice Cognitive Engine. Answer based ONLY on the context logs provided. Be concise."
+        }
+      });
+      
+      return { text: response.text, modelUsed: modelName };
+    } catch (e: any) {
+      lastError = e;
+      // If quota (429) or overloaded (503), try the next model
+      if (e.status === 429 || e.status === 503 || e.message?.includes('quota')) {
+        console.warn(`[Lattice] Model ${modelName} reached limit. Shifting to next node...`);
+        continue;
+      }
+      throw e; 
+    }
+  }
+  throw new Error(`Neural Network Exhausted: ${lastError?.message}`);
+}
 
 export async function POST(req: Request) {
   try {
     const { message } = await req.json();
 
-    // 1. Embed query
-    const embeddingResult = await ai.models.embedContent({
+    // 1. Embed the query (3072 dimensions)
+    const embedResult = await ai.models.embedContent({
       model: 'gemini-embedding-001',
       contents: message,
-      config: {
-        taskType: 'RETRIEVAL_QUERY',
-        outputDimensionality: 3072
-      }
+      config: { taskType: 'RETRIEVAL_QUERY', outputDimensionality: 3072 }
     });
+    const queryEmbedding = embedResult.embeddings[0].values;
 
+    // 2. Search Supabase
     const supabase = getSupabase();
-
-    // 2. Vector Search
-    const { data: thoughts, error: searchError } = await supabase.rpc('match_thoughts', { 
-      query_embedding: embeddingResult.embeddings[0].values, 
-      match_threshold: 0.3, 
-      match_count: 10 
+    const { data: matchedThoughts, error } = await supabase.rpc('match_thoughts', {
+      query_embedding: queryEmbedding,
+      match_threshold: 0.4, // Slightly lower threshold for better recall
+      match_count: 8        // Grabbing 8 memories for richer context
     });
 
-    if (searchError) throw searchError;
+    if (error) throw error;
 
-    // 3. Generate Answer
-    const context = thoughts?.map((t: any) => `(${t.category}) ${t.content}`).join('\n') || 'No context.';
-    
-    for (const modelName of CHAT_MODELS) {
-      try {
-        const response = await ai.models.generateContent({
-          model: modelName,
-          contents: `Context: ${context}\n\nUser: ${message}`
-        });
-        return NextResponse.json({ reply: response.text });
-      } catch (error) {
-        console.error(`🔥 CHAT ERROR with model ${modelName}:`, error);
-      }
-    }
+    // 3. Prepare Context
+    const context = matchedThoughts?.length 
+      ? matchedThoughts.map((t: any) => `- ${t.content}`).join('\n')
+      : 'No specific records found.';
 
-    return NextResponse.json({ reply: "Sorry, I couldn't generate a response." });
+    // 4. Generate Answer with Fallback Logic
+    const prompt = `
+      CONTEXT FROM USER LOGS:
+      ${context}
+
+      USER QUESTION:
+      ${message}
+
+      INSTRUCTIONS:
+      You are the Lattice Cognitive Engine. Answer based ONLY on the context above. 
+      If unsure, admit it. Keep it brief and cybernetic in tone.
+    `;
+
+    const { text, modelUsed } = await generateWithFallback(prompt);
+
+    return NextResponse.json({ 
+      reply: text, 
+      metadata: { model: modelUsed, contextCount: matchedThoughts?.length || 0 } 
+    });
+
   } catch (error: any) {
     console.error('🔥 CHAT ERROR:', error);
     return NextResponse.json({ error: error.message }, { status: 500 });
