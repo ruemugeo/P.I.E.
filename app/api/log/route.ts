@@ -15,14 +15,30 @@ const CHAT_MODELS = ['gemini-2.5-flash', 'gemini-2.5-flash-lite', 'gemini-2.0-fl
 async function generateWithFallback(prompt: string) {
   for (const modelName of CHAT_MODELS) {
     try {
-      const model = genAI.getGenerativeModel({ model: modelName }, { apiVersion: 'v1' });
-      const result = await model.generateContent(prompt);
+      const model = genAI.getGenerativeModel({ 
+        model: modelName 
+      }, { apiVersion: 'v1' });
+
+      const result = await model.generateContent({
+        contents: [{ role: "user", parts: [{ text: prompt }] }],
+        generationConfig: {
+          // 🛡️ THIS IS THE CRITICAL ADDITION:
+          responseMimeType: "application/json",
+        }
+      });
+
+      const text = result.response.text().trim();
+      
+      // Since we forced the MIME type, the text is guaranteed to be JSON
       return { 
-        data: JSON.parse(result.response.text().replace(/```json/gi, '').replace(/```/g, '').trim()),
+        data: JSON.parse(text),
         activeModel: modelName 
       };
     } catch (e: any) {
-      if (e.status === 429 || e.status === 503) continue;
+      if (e.status === 429 || e.status === 503) {
+        console.warn(`⚠️ ${modelName} hit quota, trying next...`);
+        continue;
+      }
       throw e;
     }
   }
