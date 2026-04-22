@@ -62,18 +62,23 @@ export async function POST(req: Request) {
     const { data: aiResponse, activeModel } = await generateWithFallback(`Analyze: ${content}. Return JSON: {"category":"string","sentiment":"string","tasks":[]}`);
 
     // 2. Embedding (768 Dimensions)
-    // Use the stable v1 path
+// 1. Initialize the NEW stable model
 const embeddingModel = genAI.getGenerativeModel(
-  { model: "text-embedding-005" }, // Try 004 first, then 005 if it fails
+  { model: "gemini-embedding-001" }, // This is the 2026 winner
   { apiVersion: 'v1' }
 );
 
+// 2. Embed with the "Matryoshka" dimension lock
 const embeddingResult = await embeddingModel.embedContent({
-  content: { role: "user", parts: [{ text: content }] },
-  taskType: "RETRIEVAL_DOCUMENT" as any,
-  outputDimensionality: 768 // Crucial for your Supabase vector(768)
+  content: { 
+    role: "user", 
+    parts: [{ text: content }] // Use 'message' in chat/route.ts
+  },
+  taskType: "RETRIEVAL_DOCUMENT" as any, // Use "RETRIEVAL_QUERY" in chat/route.ts
+  outputDimensionality: 768 // 👈 MANDATORY: Forces 3072 down to 768
 } as any);
 
+const embedding = embeddingResult.embedding.values;
     const supabase = getSupabase();
     const { data: thought, error } = await supabase.from('thoughts').insert([{
       content,

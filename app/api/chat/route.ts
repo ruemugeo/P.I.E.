@@ -14,17 +14,23 @@ export async function POST(req: Request) {
     const { message } = await req.json();
 
     // 1. Embed user query (768 Dimensions)
-      // Inside chat/route.ts
-      const embeddingModel = genAI.getGenerativeModel({ model: "text-embedding-005" }, { apiVersion: 'v1' });
+// 1. Initialize the NEW stable model
+const embeddingModel = genAI.getGenerativeModel(
+  { model: "gemini-embedding-001" }, // This is the 2026 winner
+  { apiVersion: 'v1' }
+);
 
-      const { embedding } = await embeddingModel.embedContent({
-        content: { role: "user", parts: [{ text: message }] },
-        taskType: "RETRIEVAL_QUERY" as any,
-        outputDimensionality: 768
-      } as any);
+// 2. Embed with the "Matryoshka" dimension lock
+const embeddingResult = await embeddingModel.embedContent({
+  content: { 
+    role: "user", 
+    parts: [{ text: content }] // Use 'message' in chat/route.ts
+  },
+  taskType: "RETRIEVAL_QUERY" as any, // Use "RETRIEVAL_QUERY" in chat/route.ts
+  outputDimensionality: 768 // 👈 MANDATORY: Forces 3072 down to 768
+} as any);
 
-      // Supabase RPC call stays the same, but now the coordinates will match!
-
+const embedding = embeddingResult.embedding.values;
     const supabase = getSupabase();
 
     // 2. Vector Search
