@@ -36,6 +36,10 @@ export async function POST(req: Request) {
     }
     return NextResponse.json({ success: true });
   } catch (error) {
-    return NextResponse.json({ error: 'Failed to process' }, { status: 500 });
+    console.error('🔥 LOG ROUTE FATAL ERROR:', error);
+    return NextResponse.json({ 
+      error: 'Failed to process', 
+      details: error instanceof Error ? error.message : String(error) 
+    }, { status: 500 });
   }
 }
