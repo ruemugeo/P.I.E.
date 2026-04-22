@@ -62,12 +62,17 @@ export async function POST(req: Request) {
     const { data: aiResponse, activeModel } = await generateWithFallback(`Analyze: ${content}. Return JSON: {"category":"string","sentiment":"string","tasks":[]}`);
 
     // 2. Embedding (768 Dimensions)
-    const embeddingModel = genAI.getGenerativeModel({ model: "gemini-embedding-001" }, { apiVersion: 'v1' });
-    const embeddingResult = await embeddingModel.embedContent({
-      content: { role: "user", parts: [{ text: content }] }, // 👈 Keep 'content' here
-      taskType: "RETRIEVAL_DOCUMENT" as any,
-      outputDimensionality: 768
-    } as any);
+    // Use the stable v1 path
+const embeddingModel = genAI.getGenerativeModel(
+  { model: "text-embedding-004" }, // Try 004 first, then 005 if it fails
+  { apiVersion: 'v1' }
+);
+
+const embeddingResult = await embeddingModel.embedContent({
+  content: { role: "user", parts: [{ text: content }] },
+  taskType: "RETRIEVAL_DOCUMENT" as any,
+  outputDimensionality: 768 // Crucial for your Supabase vector(768)
+} as any);
 
     const supabase = getSupabase();
     const { data: thought, error } = await supabase.from('thoughts').insert([{

@@ -14,12 +14,16 @@ export async function POST(req: Request) {
     const { message } = await req.json();
 
     // 1. Embed user query (768 Dimensions)
-    const embeddingModel = genAI.getGenerativeModel({ model: "gemini-embedding-001" }, { apiVersion: 'v1' });
-    const embeddingResult = await embeddingModel.embedContent({
-      content: { role: "user", parts: [{ text: message }] }, // 👈 Use 'message' here
-      taskType: "RETRIEVAL_QUERY" as any,
-      outputDimensionality: 768
-    } as any);
+      // Inside chat/route.ts
+      const embeddingModel = genAI.getGenerativeModel({ model: "text-embedding-004" }, { apiVersion: 'v1' });
+
+      const { embedding } = await embeddingModel.embedContent({
+        content: { role: "user", parts: [{ text: message }] },
+        taskType: "RETRIEVAL_QUERY" as any,
+        outputDimensionality: 768
+      } as any);
+
+      // Supabase RPC call stays the same, but now the coordinates will match!
 
     const supabase = getSupabase();
 
