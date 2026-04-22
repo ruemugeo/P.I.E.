@@ -64,7 +64,7 @@ export async function POST(req: Request) {
     // 2. Embedding (768 Dimensions)
     // Use the stable v1 path
 const embeddingModel = genAI.getGenerativeModel(
-  { model: "text-embedding-004" }, // Try 004 first, then 005 if it fails
+  { model: "text-embedding-005" }, // Try 004 first, then 005 if it fails
   { apiVersion: 'v1' }
 );
 

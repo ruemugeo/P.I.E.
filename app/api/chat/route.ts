@@ -15,7 +15,7 @@ export async function POST(req: Request) {
 
     // 1. Embed user query (768 Dimensions)
       // Inside chat/route.ts
-      const embeddingModel = genAI.getGenerativeModel({ model: "text-embedding-004" }, { apiVersion: 'v1' });
+      const embeddingModel = genAI.getGenerativeModel({ model: "text-embedding-005" }, { apiVersion: 'v1' });
 
       const { embedding } = await embeddingModel.embedContent({
         content: { role: "user", parts: [{ text: message }] },
