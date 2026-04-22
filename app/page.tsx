@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { BrainCircuit, Database, CheckCircle2, Send, MessageSquare, Loader2, Zap } from 'lucide-react';
+import { BrainCircuit, Database, CheckCircle2, MessageSquare, BookOpen, Plus, Save, Zap, Loader2, Send } from 'lucide-react';
 import Link from 'next/link';
 
 export default function Home() {
@@ -47,6 +47,7 @@ export default function Home() {
           <Link href="/" className="p-3 text-white bg-neutral-800 rounded-xl transition-all shadow-inner"><Database size={20}/></Link>
           <Link href="/tasks" className="p-3 hover:text-white hover:bg-neutral-800 rounded-xl transition-all"><CheckCircle2 size={20}/></Link>
           <Link href="/chat" className="p-3 hover:text-white hover:bg-neutral-800 rounded-xl transition-all"><MessageSquare size={20}/></Link>
+          <Link href="/wiki" className="p-3 hover:text-white hover:bg-neutral-800 rounded-xl transition-all"><BookOpen size={20}/></Link>
         </div>
       </motion.nav>
 
@@ -55,6 +56,7 @@ export default function Home() {
         <Link href="/" className="p-3 text-white flex flex-col items-center gap-1 transition-all"><Database size={20}/></Link>
         <Link href="/tasks" className="p-3 hover:text-white flex flex-col items-center gap-1 transition-all"><CheckCircle2 size={20}/></Link>
         <Link href="/chat" className="p-3 hover:text-white flex flex-col items-center gap-1 transition-all"><MessageSquare size={20}/></Link>
+        <Link href="/wiki" className="p-3 hover:text-white flex flex-col items-center gap-1 transition-all"><MessageSquare size={20}/></Link>
       </nav>
 
       <div className="lg:ml-28 w-full max-w-4xl mx-auto flex flex-col gap-8">
@@ -91,6 +93,18 @@ export default function Home() {
               <p className="text-neutral-300 text-sm leading-relaxed">{t.content}</p>
             </div>
           ))}
+
+          <button 
+          onClick={async () => {
+            const newPage = (thoughts.length / 20); // assuming 20 limit
+            const res = await fetch(`/api/history?page=${newPage}`);
+            const data = await res.json();
+            setThoughts([...thoughts, ...data.thoughts]);
+          }}
+          className="w-full p-4 mt-4 rounded-2xl bg-neutral-900 border border-white/5 text-neutral-400 hover:text-white transition-all"
+        >
+          Load Matrix History
+        </button>
         </div>
       </div>
     </main>

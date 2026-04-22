@@ -1,23 +1,27 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 
-const getSupabase = () => {
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
-  const key = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
-  return createClient(url || 'https://placeholder.supabase.co', key || 'placeholder');
-};
+const getSupabase = () => createClient(process.env.NEXT_PUBLIC_SUPABASE_URL || '', process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '');
 
 export async function GET() {
-  const supabase = getSupabase();
-  const { data, error } = await supabase.from('tasks').select('*').order('created_at', { ascending: false });
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  const { data } = await getSupabase().from('tasks').select('*').order('created_at', { ascending: false });
   return NextResponse.json({ tasks: data });
 }
 
+export async function POST(req: Request) {
+  const { title, priority } = await req.json();
+  const { data } = await getSupabase().from('tasks').insert([{ title, priority, status: 'todo' }]).select().single();
+  return NextResponse.json({ task: data });
+}
+
 export async function PATCH(req: Request) {
-  const supabase = getSupabase();
-  const { id, status } = await req.json();
-  const { error } = await supabase.from('tasks').update({ status }).eq('id', id);
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  const { id, updates } = await req.json();
+  await getSupabase().from('tasks').update(updates).eq('id', id);
+  return NextResponse.json({ success: true });
+}
+
+export async function DELETE(req: Request) {
+  const { id } = await req.json();
+  await getSupabase().from('tasks').delete().eq('id', id);
   return NextResponse.json({ success: true });
 }

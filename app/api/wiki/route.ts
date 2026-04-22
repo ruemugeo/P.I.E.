@@ -1,26 +1,15 @@
 import { NextResponse } from 'next/server';
-import { GoogleGenerativeAI } from '@google/generative-ai';
+import { createClient } from '@supabase/supabase-js';
 
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!);
+const getSupabase = () => createClient(process.env.NEXT_PUBLIC_SUPABASE_URL || '', process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '');
+
+export async function GET() {
+  const { data } = await getSupabase().from('wiki').select('*').order('updated_at', { ascending: false });
+  return NextResponse.json({ pages: data });
+}
 
 export async function POST(req: Request) {
-  try {
-    const { content, mode } = await req.json();
-
-const proModel = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });    
-    let prompt = "";
-    if (mode === 'devil') {
-      prompt = `Act as a Devil's Advocate. Brutally but constructively deconstruct this thought. Find logical fallacies, present counter-arguments, and point out blind spots. Keep your response extremely concise, punchy, and under 150 words. Thought: "${content}"`;
-    } else {
-      prompt = `Act as an Angel Companion. Validate this thought. Expand on its potential and hype up the core insight. Keep your response extremely concise, energetic, and under 150 words. Thought: "${content}"`;
-    }
-
-    const result = await proModel.generateContent(prompt);
-    const analysis = result.response.text();
-
-    return NextResponse.json({ analysis });
-  } catch (error) {
-    console.error("Analysis Error:", error);
-    return NextResponse.json({ error: 'Failed to analyze thought' }, { status: 500 });
-  }
+  const { title, content } = await req.json();
+  const { data } = await getSupabase().from('wiki').insert([{ title, content }]).select().single();
+  return NextResponse.json({ page: data });
 }

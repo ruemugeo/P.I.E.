@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { motion } from 'framer-motion';
-import { BrainCircuit, Database, CheckCircle2, MessageSquare, Send, Loader2, BotMessageSquare } from 'lucide-react';
+import { BrainCircuit, Database, CheckCircle2, MessageSquare, Send, Loader2, BotMessageSquare, BookOpen } from 'lucide-react';
 import Link from 'next/link';
 
 type ChatMessage = { role: 'user' | 'pie'; content: string };
@@ -43,6 +43,7 @@ export default function ChatPage() {
           <Link href="/" className="p-3 hover:text-white hover:bg-neutral-800 rounded-xl transition-all"><Database size={20}/></Link>
           <Link href="/tasks" className="p-3 hover:text-white hover:bg-neutral-800 rounded-xl transition-all"><CheckCircle2 size={20}/></Link>
           <Link href="/chat" className="p-3 text-white bg-neutral-800 rounded-xl transition-all shadow-inner"><MessageSquare size={20}/></Link>
+          <Link href="/wiki" className="p-3 text-white bg-neutral-800 rounded-xl transition-all shadow-inner"><BookOpen size={20}/></Link>
         </div>
       </motion.nav>
 
@@ -50,6 +51,7 @@ export default function ChatPage() {
         <Link href="/" className="p-3 hover:text-white flex flex-col items-center gap-1 transition-all"><Database size={20}/></Link>
         <Link href="/tasks" className="p-3 hover:text-white flex flex-col items-center gap-1 transition-all"><CheckCircle2 size={20}/></Link>
         <Link href="/chat" className="p-3 text-white flex flex-col items-center gap-1 transition-all"><MessageSquare size={20}/></Link>
+        <Link href="/wiki" className="p-3 text-white flex flex-col items-center gap-1 transition-all"><BookOpen size={20}/></Link>
       </nav>
 
       <div className="lg:ml-28 w-full max-w-4xl mx-auto flex flex-col h-[calc(100vh-8rem)] lg:h-[calc(100vh-5rem)]">
