@@ -15,34 +15,36 @@ const CHAT_MODELS = ['gemini-2.5-flash', 'gemini-2.5-flash-lite', 'gemini-2.0-fl
 async function generateWithFallback(prompt: string) {
   for (const modelName of CHAT_MODELS) {
     try {
+      console.log(`🤖 Fallback check: Trying ${modelName}...`);
+      
       const model = genAI.getGenerativeModel({ 
-        model: modelName 
+        model: modelName,
+        // 🛡️ SYSTEM INSTRUCTION: This tells the AI what its "job" is.
+        systemInstruction: "You are a data extraction engine. You must output ONLY valid raw JSON. Do not include any conversational text, explanations, or markdown code blocks.",
       }, { apiVersion: 'v1' });
 
-      const result = await model.generateContent({
-        contents: [{ role: "user", parts: [{ text: prompt }] }],
-        generationConfig: {
-          // 🛡️ THIS IS THE CRITICAL ADDITION:
-          responseMimeType: "application/json",
-        }
-      });
-
+      // We pass the prompt directly. Because of the System Instruction, 
+      // the model won't say "Here is your JSON".
+      const result = await model.generateContent(prompt);
       const text = result.response.text().trim();
       
-      // Since we forced the MIME type, the text is guaranteed to be JSON
+      // Clean up any rogue backticks just in case the AI slips up
+      const cleanJson = text.replace(/```json/gi, '').replace(/```/g, '').trim();
+      
       return { 
-        data: JSON.parse(text),
+        data: JSON.parse(cleanJson),
         activeModel: modelName 
       };
     } catch (e: any) {
+      // 429 = Quota, 503 = Server Busy
       if (e.status === 429 || e.status === 503) {
-        console.warn(`⚠️ ${modelName} hit quota, trying next...`);
+        console.warn(`⚠️ ${modelName} unavailable, falling back...`);
         continue;
       }
-      throw e;
+      throw e; // If it's a real code error, stop here
     }
   }
-  throw new Error("All models hit quota.");
+  throw new Error("All Gemini models are currently at capacity.");
 }
 
 export async function POST(req: Request) {
