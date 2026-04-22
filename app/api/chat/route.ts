@@ -41,7 +41,7 @@ export async function POST(req: Request) {
     const tasksContext = tasks?.map((t: any) => `-[${t.priority}] ${t.title}`).join('\n') || 'No active tasks.';
 
     // 4. Generate Answer with Context
-    const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' }, { apiVersion: 'v1' });
+    const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' }, { apiVersion: 'v1' });
     const result = await model.generateContent(`
       You are PIE (Personal Intelligence Engine). 
       Answer the user based on their specific memories and tasks.

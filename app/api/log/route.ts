@@ -30,7 +30,7 @@ export async function POST(req: Request) {
     if (!content) return NextResponse.json({ error: 'No content' }, { status: 400 });
 
     // 1. AI Analysis (Category & Tasks)
-    const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' }, { apiVersion: 'v1' });
+    const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' }, { apiVersion: 'v1' });
     const prompt = `Analyze: "${content}". Return strictly JSON: {"category": "One word", "sentiment": "word+emoji", "tasks": [{"title": "Action", "priority": "high|medium|low"}]}`;
     
     const result = await fetchWithRetry(() => model.generateContent(prompt));
