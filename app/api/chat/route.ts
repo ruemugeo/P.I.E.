@@ -19,7 +19,7 @@ export async function POST(req: Request) {
       contents: message,
       config: {
         taskType: 'RETRIEVAL_QUERY',
-        outputDimensionality: 768
+        outputDimensionality: 3072
       }
     });
 

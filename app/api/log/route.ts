@@ -4,10 +4,16 @@ import { GoogleGenAI } from '@google/genai';
 
 export const dynamic = 'force-dynamic';
 
-const getSupabase = () => createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL || '', 
-  process.env.SUPABASE_SERVICE_ROLE_KEY || ''
-);
+const getSupabase = () => {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+  if (!url || !key) {
+    throw new Error("Supabase environment variables are missing!");
+  }
+
+  return createClient(url, key);
+};
 
 const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
 const CHAT_MODELS = ['gemini-2.5-flash', 'gemini-2.5-flash-lite'];
@@ -42,7 +48,7 @@ export async function POST(req: Request) {
     const embeddingResult = await ai.models.embedContent({
       model: 'gemini-embedding-001',
       contents: content,
-      config: { taskType: 'RETRIEVAL_DOCUMENT', outputDimensionality: 768 }
+      config: { taskType: 'RETRIEVAL_DOCUMENT', outputDimensionality: 3072 }
     });
 
     const supabase = getSupabase();
