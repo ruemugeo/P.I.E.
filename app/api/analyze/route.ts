@@ -1,63 +1,52 @@
 import { NextResponse } from 'next/server';
+import { createClient } from '@supabase/supabase-js'; // FIX FOR REFERENCE ERROR
 import { GoogleGenAI } from '@google/genai';
-import { createClient } from '@supabase/supabase-js';
 
-// Initialize the client inside the file
+const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 );
 
-const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
-
-// The order of models we trust for deep analysis
-const ANALYSIS_MODELS = [
-  'gemini-2.0-flash', 
-  'gemini-1.5-pro', 
-  'gemini-1.5-flash'
-];
+const ANALYSIS_MODELS = ['gemini-2.0-flash', 'gemini-1.5-pro', 'gemini-1.5-flash'];
 
 async function analyzeWithFallback(prompt: string) {
-  let lastError = null;
-
   for (const modelName of ANALYSIS_MODELS) {
     try {
-      console.log(`[Lattice] Analysis Attempt: ${modelName}`);
       const model = ai.getGenerativeModel({ model: modelName });
       const result = await model.generateContent(prompt);
-      const response = await result.response;
-      return response.text();
-    } catch (e: any) {
-      lastError = e;
-      console.error(`[Lattice] ${modelName} Analysis failed:`, e.message);
-      continue; // Try the next model
+      return result.response.text();
+    } catch (e) {
+      console.error(`Fallback: ${modelName} failed, trying next...`);
+      continue;
     }
   }
-  throw new Error(lastError?.message || "All analysis models failed");
+  throw new Error("All AI models are currently offline.");
 }
 
 export async function POST(req: Request) {
   try {
-    const { content, lens } = await req.json();
+    const { content, lens, id } = await req.json();
 
     const prompts = {
-      angel: "Act as a high-level strategic mentor. Find the positive growth potential and ethical alignment in this thought. Provide 2-3 actionable words of encouragement.",
-      devil: "Act as a rigorous devil's advocate. Identify the logical fallacies, hidden risks, and potential downsides of this idea. Be brutally honest but constructive.",
-      zap: "Act as a cross-disciplinary polymath. Connect this thought to a concept in an unrelated field (e.g. biology, architecture, or music theory) to spark a new perspective."
+      angel: "Identify the growth mindset, positive connections, and future potential in this thought.",
+      devil: "Critically analyze this thought for risks, logical flaws, and blind spots.",
+      zap: "Connect this thought to an unrelated scientific or artistic field for a new insight."
     };
 
     const selectedPrompt = prompts[lens as keyof typeof prompts] || prompts.zap;
-    const finalPrompt = `${selectedPrompt}\n\nThought to analyze: "${content}"`;
+    const finalPrompt = `${selectedPrompt}\n\n"${content}"`;
 
     const analysis = await analyzeWithFallback(finalPrompt);
 
-    return NextResponse.json({ 
-      analysis,
-      lensUsed: lens
-    });
+    // PIE LOGIC: Store the analysis back in the database metadata
+    await supabase.from('thoughts').update({
+      metadata: { [`analysis_${lens}`]: analysis }
+    }).eq('id', id);
+
+    return NextResponse.json({ analysis });
 
   } catch (error: any) {
-    console.error('🔥 ANALYSIS CRASH:', error);
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }
