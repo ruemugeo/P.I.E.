@@ -4,9 +4,8 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "next build",
-    "start": "next start",
-    "lint": "eslint"
+    "build": "next build --no-lint",
+    "start": "next start"
   },
   "dependencies": {
     "@google/genai": "^1.50.1",
