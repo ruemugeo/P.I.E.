@@ -1,13 +1,18 @@
-import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
+import { NextResponse } from 'next/server';
 import { GoogleGenAI } from '@google/genai';
 
-export const dynamic = 'force-dynamic';
-
-const getSupabase = () => createClient(
+// --- ADD THESE LINES RIGHT HERE ---
+const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 );
+// ----------------------------------
+
+// THIS LINE IS KEY: It tells Next.js not to try and pre-build this page 
+// because it needs access to your database environment variables.
+export const dynamic = 'force-dynamic';
+
 // 1. Fetch your "Interests" to prime the AI's personality
 const { data: interests } = await supabase
   .from('thoughts')
