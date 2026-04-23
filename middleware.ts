@@ -1,31 +1,43 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { createServerClient } from '@supabase/ssr';
+import { NextResponse, type NextRequest } from 'next/server';
 
-export function middleware(req: NextRequest) {
-  const basicAuth = req.headers.get('authorization');
+export async function middleware(request: NextRequest) {
+  let supabaseResponse = NextResponse.next({ request });
 
-  if (basicAuth) {
-    try {
-      const authValue = basicAuth.split(' ')[1];
-      const decoded = atob(authValue);
-      const [user, pwd] = decoded.split(':');
-
-      if (user === 'admin' && pwd === 'ruemu@2004') {
-        return NextResponse.next();
-      }
-    } catch (e) {
-      console.log('Auth decoding failed');
+  const supabase = createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!, // Make sure this is in your .env!
+    {
+      cookies: {
+        getAll() {
+          return request.cookies.getAll();
+        },
+        setAll(cookiesToSet) {
+          cookiesToSet.forEach(({ name, value }) => request.cookies.set(name, value));
+          supabaseResponse = NextResponse.next({ request });
+          cookiesToSet.forEach(({ name, value, options }) =>
+            supabaseResponse.cookies.set(name, value, options)
+          );
+        },
+      },
     }
+  );
+
+  const { data: { user } } = await supabase.auth.getUser();
+
+  // If there's no user and they aren't already on the login page or an API route, kick them out
+  if (!user && !request.nextUrl.pathname.startsWith('/login') && !request.nextUrl.pathname.startsWith('/api')) {
+    const url = request.nextUrl.clone();
+    url.pathname = '/login';
+    return NextResponse.redirect(url);
   }
 
-  return new NextResponse(null, {
-    status: 401,
-    headers: {
-      'WWW-Authenticate': 'Basic realm="Secure Area"',
-    },
-  });
+  return supabaseResponse;
 }
 
-// SECURED: Protects UI and /api calls
 export const config = {
-  matcher: ['/((?!_next/static|_next/image|favicon.ico).*)'],
+  matcher: [
+    // Skip Next.js internals and all static files
+    '/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
+  ],
 };
