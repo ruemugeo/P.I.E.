@@ -1,16 +1,16 @@
-@tailwind base;
+@@tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+/* FORCED DEBUGGING: This MUST turn the background red if CSS is working */
+body {
+  background-color: #7f1d1d !important; 
+  color: white !important;
+}
 
 :root {
   --background: #060608;
   --foreground: #ededed;
-}
-
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: ui-monospace, 'Cascadia Code', 'Source Code Pro', Menlo, Monaco, Consolas, 'EmojiFont', monospace;
 }
 
 @theme inline {
