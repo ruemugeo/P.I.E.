@@ -1,43 +1,56 @@
 import { NextResponse } from 'next/server';
 import { GoogleGenAI } from '@google/genai';
 
-const CHAT_MODELS = [
-  'gemini-2.5-flash', 
-  'gemini-2.5-flash-lite', 
-  'gemini-1.5-flash', 
-  'gemini-1.5-pro'
-];
-
 const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
 
-export async function POST(req: Request) {
-  const { content, lens } = await req.json();
-  
-  const prompts = {
-    angel: "Provide an encouraging, supportive perspective on this idea. How does it align with personal growth?",
-    devil: "Be the ultimate skeptic. Find the flaws, the risks, and the logical gaps in this thought. Don't be mean, be rigorous.",
-    zap: "Make a 'spontaneous connection.' Connect this thought to a completely different field (like biology, space, or history) to create a new insight."
-  };
+// The order of models we trust for deep analysis
+const ANALYSIS_MODELS = [
+  'gemini-2.0-flash', 
+  'gemini-1.5-pro', 
+  'gemini-1.5-flash'
+];
 
-  const model = ai.getGenerativeModel({
-    for (const modelName of CHAT_MODELS) {
+async function analyzeWithFallback(prompt: string) {
+  let lastError = null;
+
+  for (const modelName of ANALYSIS_MODELS) {
     try {
-    model: modelName });
-  const result = await model.generateContent(`${prompts[lens]}\n\nThought: "${content}"`);
-  
-  return { text: response.text, modelUsed: modelName };
+      console.log(`[Lattice] Analysis Attempt: ${modelName}`);
+      const model = ai.getGenerativeModel({ model: modelName });
+      const result = await model.generateContent(prompt);
+      const response = await result.response;
+      return response.text();
     } catch (e: any) {
       lastError = e;
-      // If quota (429) or overloaded (503), try the next model
-      if (e.status === 429 || e.status === 503 || e.message?.includes('quota')) {
-        console.warn(`[Lattice] Model ${modelName} reached limit. Shifting to next node...`);
-        continue;
-      }
-      throw e; 
+      console.error(`[Lattice] ${modelName} Analysis failed:`, e.message);
+      continue; // Try the next model
     }
   }
-  throw new Error(`Neural Network Exhausted: ${lastError?.message}`);
+  throw new Error(lastError?.message || "All analysis models failed");
 }
-}
-}
+
+export async function POST(req: Request) {
+  try {
+    const { content, lens } = await req.json();
+
+    const prompts = {
+      angel: "Act as a high-level strategic mentor. Find the positive growth potential and ethical alignment in this thought. Provide 2-3 actionable words of encouragement.",
+      devil: "Act as a rigorous devil's advocate. Identify the logical fallacies, hidden risks, and potential downsides of this idea. Be brutally honest but constructive.",
+      zap: "Act as a cross-disciplinary polymath. Connect this thought to a concept in an unrelated field (e.g. biology, architecture, or music theory) to spark a new perspective."
+    };
+
+    const selectedPrompt = prompts[lens as keyof typeof prompts] || prompts.zap;
+    const finalPrompt = `${selectedPrompt}\n\nThought to analyze: "${content}"`;
+
+    const analysis = await analyzeWithFallback(finalPrompt);
+
+    return NextResponse.json({ 
+      analysis,
+      lensUsed: lens
+    });
+
+  } catch (error: any) {
+    console.error('🔥 ANALYSIS CRASH:', error);
+    return NextResponse.json({ error: error.message }, { status: 500 });
+  }
 }
