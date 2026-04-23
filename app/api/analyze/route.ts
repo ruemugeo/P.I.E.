@@ -2,12 +2,11 @@ import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js'; // FIX FOR REFERENCE ERROR
 import { GoogleGenAI } from '@google/genai';
 
-const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 );
-
+const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
 const ANALYSIS_MODELS = ['gemini-2.0-flash', 'gemini-1.5-pro', 'gemini-1.5-flash'];
 
 async function analyzeWithFallback(prompt: string) {
