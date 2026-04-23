@@ -1,5 +1,18 @@
 import { NextResponse } from 'next/server';
 import { GoogleGenAI } from '@google/genai';
+import { createClient } from '@supabase/supabase-js';
+
+// 1. Initialise the client
+const supabase = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.SUPABASE_SERVICE_ROLE_KEY!
+);
+
+export async function POST(req: Request) {
+  // Now you can use 'supabase' safely here
+  const { data } = await supabase.from('thoughts').select('*');
+  // ...
+}
 
 // We define GET explicitly so the browser can hit it
 export async function GET() {
