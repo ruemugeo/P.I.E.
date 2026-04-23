@@ -1,41 +1,28 @@
-import './globals.css'; // <--- THIS IS THE CSS LIFELINE
-import { Inter, JetBrains_Mono } from 'next/font/google';
+import './globals.css';
 import { Toaster } from 'sonner';
+import { Database, CheckCircle, MessageSquare, BookOpen } from 'lucide-react';
+import Link from 'next/link';
 
-// Optional: Setting up fonts to make it look sharp
-const mono = JetBrains_Mono({ 
-  subsets: ['latin'],
-  variable: '--font-mono' 
-});
-
-export const metadata = {
-  title: 'Lattice Core',
-  description: 'Cognitive Life Operating System',
-};
-
-export default function RootLayout({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
+export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en" className="dark">
-      <body className={`${mono.variable} font-mono bg-[#060608] text-neutral-100 antialiased`}>
-        {children}
-        
-        {/* This makes your notifications appear */}
-        <Toaster 
-          theme="dark" 
-          position="bottom-right" 
-          toastOptions={{
-            style: { 
-              background: '#0a0a0c', 
-              border: '1px solid rgba(255,255,255,0.1)',
-              color: '#fff',
-              fontFamily: 'var(--font-mono)'
-            },
-          }}
-        />
+      <body className="bg-[#060608] text-neutral-100 antialiased font-mono">
+        {/* Main Content Area */}
+        <div className="pb-24"> 
+          {children}
+        </div>
+
+        {/* Global Navigation Bar */}
+        <nav className="fixed bottom-0 left-0 right-0 bg-[#0a0a0c]/80 backdrop-blur-xl border-t border-white/5 px-6 py-4 z-50">
+          <div className="max-w-md mx-auto flex justify-between items-center text-neutral-500">
+            <Link href="/" className="hover:text-white transition-colors"><Database size={24} /></Link>
+            <Link href="/tasks" className="hover:text-white transition-colors"><CheckCircle size={24} /></Link>
+            <Link href="/chat" className="hover:text-white transition-colors"><MessageSquare size={24} /></Link>
+            <Link href="/knowledge" className="hover:text-white transition-colors"><BookOpen size={24} /></Link>
+          </div>
+        </nav>
+
+        <Toaster theme="dark" />
       </body>
     </html>
   );
