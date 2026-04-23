@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { BrainCircuit, Database, CheckCircle2, MessageSquare, BookOpen, Zap, Shield, FileText, Loader2 } from 'lucide-react';
+import { BrainCircuit, Database, CheckCircle2, MessageSquare, BookOpen, Shield, FileText, Loader2 } from 'lucide-react';
 import Link from 'next/link';
 
 export default function WikiPage() {
@@ -23,7 +23,7 @@ export default function WikiPage() {
   return (
     <main className="min-h-screen bg-[#060608] text-neutral-100 p-6 lg:p-10 font-mono relative pb-24 lg:pb-10">
       
-      {/* SHARED NAVIGATION (MATCHING YOUR CORE STYLE) */}
+      {/* DESKTOP SIDE NAVIGATION */}
       <motion.nav initial={{ x: -100, opacity: 0 }} animate={{ x: 0, opacity: 1 }} className={`fixed left-4 top-1/2 -translate-y-1/2 w-20 py-8 flex flex-col items-center gap-10 ${GLASS_BG} rounded-3xl shadow-2xl z-50 hidden lg:flex`}>
         <motion.div animate={{ rotate: [0, 10, -10, 0] }} transition={{ repeat: Infinity, duration: 5 }} className="p-3 bg-neutral-900 rounded-xl border border-white/5"><BrainCircuit className="text-blue-400" size={24}/></motion.div>
         <div className="flex flex-col gap-8 text-neutral-600">
@@ -34,8 +34,16 @@ export default function WikiPage() {
         </div>
       </motion.nav>
 
-      <div className="lg:ml-28 w-full max-w-5xl mx-auto flex flex-col gap-8">
-        <header>
+      {/* MOBILE BOTTOM NAVIGATION */}
+      <nav className="fixed bottom-0 left-0 w-full p-4 bg-[#060608]/95 backdrop-blur-xl border-t border-white/5 z-50 lg:hidden flex justify-around items-center text-neutral-500 pb-8">
+        <Link href="/" className="p-3 hover:text-white flex flex-col items-center gap-1 transition-all"><Database size={20}/></Link>
+        <Link href="/tasks" className="p-3 hover:text-white flex flex-col items-center gap-1 transition-all"><CheckCircle2 size={20}/></Link>
+        <Link href="/chat" className="p-3 hover:text-white flex flex-col items-center gap-1 transition-all"><MessageSquare size={20}/></Link>
+        <Link href="/wiki" className="p-3 text-white flex flex-col items-center gap-1 shadow-inner"><BookOpen size={20}/></Link>
+      </nav>
+
+      <div className="lg:ml-28 w-full max-w-4xl mx-auto flex flex-col gap-8">
+        <header className="mb-2 shrink-0">
           <h1 className="text-4xl md:text-5xl font-extrabold bg-gradient-to-r from-neutral-100 via-neutral-300 to-neutral-600 bg-clip-text text-transparent">Knowledge Graph</h1>
           <p className="text-neutral-500 font-bold uppercase tracking-widest text-[10px] flex items-center gap-2 mt-2">
             <Shield size={14} className="text-blue-500"/> Categorical Intelligence Synthesis
@@ -51,8 +59,8 @@ export default function WikiPage() {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {clusters.map((cluster, i) => (
               <motion.div 
-                initial={{ opacity: 0, scale: 0.95 }}
-                animate={{ opacity: 1, scale: 1 }}
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: i * 0.1 }}
                 key={i} 
                 className={`p-6 rounded-3xl ${GLASS_BG} hover:border-blue-500/40 transition-all group cursor-pointer`}
