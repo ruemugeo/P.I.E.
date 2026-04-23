@@ -8,7 +8,18 @@ const getSupabase = () => createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 );
+// 1. Fetch your "Interests" to prime the AI's personality
+const { data: interests } = await supabase
+  .from('thoughts')
+  .select('content')
+  .eq('category', 'interest');
 
+const interestContext = interests?.map(i => i.content).join(', ') || "No specific interests logged.";
+
+// 2. Add this to your system prompt
+const systemPrompt = `You are Lattice, the user's cognitive exoskeleton. 
+User's Core Interests: ${interestContext}
+Use this context to make connections in your answers.`;
 const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
 
 // The Model Rotation Array
@@ -30,7 +41,7 @@ async function generateWithFallback(prompt: string) {
         contents: prompt,
         config: {
           // You can add systemInstructions here if needed for the chat
-          systemInstruction: "You are the Lattice Cognitive Engine. Answer based ONLY on the context logs provided. Be concise."
+          systemInstruction: "You are the Lattice Cognitive Engine. Answer based on the context logs provided. Be concise."
         }
       });
       
