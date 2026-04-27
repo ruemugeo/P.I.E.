@@ -5,12 +5,25 @@ import { motion } from 'framer-motion';
 import { BrainCircuit, Database, CheckCircle2, MessageSquare, BookOpen, Zap, Plus, Loader2 } from 'lucide-react';
 import Link from 'next/link';
 
+type Task = {
+  id: string;
+  status: string;
+  title: string;
+};
+
+type TasksResponse = {
+  tasks?: Task[];
+  task?: Task;
+};
+
 export default function TasksPage() {
-  const [tasks, setTasks] = useState<any[]>([]);
+  const [tasks, setTasks] = useState<Task[]>([]);
   const [isAdding, setIsAdding] = useState(false);
 
   useEffect(() => {
-    fetch('/api/tasks').then(res => res.json()).then(data => setTasks(data.tasks || []));
+    fetch('/api/tasks')
+      .then((res) => res.json())
+      .then((data: TasksResponse) => setTasks(data.tasks || []));
   }, []);
 
   const toggleTask = async (id: string, currentStatus: string) => {
@@ -75,8 +88,10 @@ export default function TasksPage() {
                     headers: {'Content-Type': 'application/json'}, 
                     body: JSON.stringify({ title, priority: 'medium' }) 
                   });
-                  const { task } = await res.json();
-                  setTasks(prev => [task, ...prev]);
+                  const { task } = (await res.json()) as TasksResponse;
+                  if (task) {
+                    setTasks((prev) => [task, ...prev]);
+                  }
                 } finally {
                   setIsAdding(false);
                 }
@@ -91,7 +106,7 @@ export default function TasksPage() {
         {/* TASK LIST */}
         <div className="flex flex-col gap-3 mt-4">
           <h3 className="text-neutral-500 uppercase text-xs font-bold tracking-widest pl-2 mb-2">Pending Protocol</h3>
-          {tasks.map(task => (
+          {tasks.map((task) => (
             <motion.div layout key={task.id} className={`group flex items-center gap-4 p-5 rounded-2xl ${GLASS_BG} ${task.status === 'done' ? 'opacity-40' : 'hover:border-blue-500/30 transition-all'}`}>
               <button onClick={() => toggleTask(task.id, task.status)} className="text-neutral-500 hover:text-white transition-colors flex-shrink-0">
                 {task.status === 'done' ? <CheckCircle2 size={24} className="text-blue-500" /> : <div className="w-6 h-6 rounded-full border-2 border-neutral-600 group-hover:border-blue-400 transition-colors"></div>}
