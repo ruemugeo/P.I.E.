@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
+import { createClient } from '@supabase/supabase-js'; // FIX FOR REFERENCE ERROR
 import { GoogleGenAI } from '@google/genai';
 
 const supabase = createClient(
@@ -10,23 +10,17 @@ const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
 const ANALYSIS_MODELS = ['gemini-2.0-flash', 'gemini-1.5-pro', 'gemini-1.5-flash'];
 
 async function analyzeWithFallback(prompt: string) {
-  let lastError: Error | null = null;
-
   for (const modelName of ANALYSIS_MODELS) {
     try {
-      const response = await ai.models.generateContent({
-        model: modelName,
-        contents: prompt,
-      });
-      return response.text || '';
-    } catch (error: unknown) {
-      lastError = error instanceof Error ? error : new Error('Unknown Gemini error');
+      const model = ai.getGenerativeModel({ model: modelName });
+      const result = await model.generateContent(prompt);
+      return result.response.text();
+    } catch (e) {
       console.error(`Fallback: ${modelName} failed, trying next...`);
       continue;
     }
   }
-
-  throw new Error(lastError?.message || 'All AI models are currently offline.');
+  throw new Error("All AI models are currently offline.");
 }
 
 export async function POST(req: Request) {
@@ -34,9 +28,9 @@ export async function POST(req: Request) {
     const { content, lens, id } = await req.json();
 
     const prompts = {
-      angel: 'Identify the growth mindset, positive connections, and future potential in this thought.',
-      devil: 'Critically analyze this thought for risks, logical flaws, and blind spots.',
-      zap: 'Connect this thought to an unrelated scientific or artistic field for a new insight.',
+      angel: "Identify the growth mindset, positive connections, and future potential in this thought.",
+      devil: "Critically analyze this thought for risks, logical flaws, and blind spots.",
+      zap: "Connect this thought to an unrelated scientific or artistic field for a new insight."
     };
 
     const selectedPrompt = prompts[lens as keyof typeof prompts] || prompts.zap;
@@ -44,16 +38,14 @@ export async function POST(req: Request) {
 
     const analysis = await analyzeWithFallback(finalPrompt);
 
-    await supabase
-      .from('thoughts')
-      .update({
-        metadata: { [`analysis_${lens}`]: analysis },
-      })
-      .eq('id', id);
+    // PIE LOGIC: Store the analysis back in the database metadata
+    await supabase.from('thoughts').update({
+      metadata: { [`analysis_${lens}`]: analysis }
+    }).eq('id', id);
 
     return NextResponse.json({ analysis });
-  } catch (error: unknown) {
-    const message = error instanceof Error ? error.message : 'Unknown error';
-    return NextResponse.json({ error: message }, { status: 500 });
+
+  } catch (error: any) {
+    return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }

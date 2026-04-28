@@ -18,7 +18,7 @@ export async function POST(req: Request) {
     }]);
 
     return NextResponse.json({ success: true });
-  } catch {
+  } catch (error) {
     return NextResponse.json({ error: 'Failed to add interest' }, { status: 500 });
   }
 }

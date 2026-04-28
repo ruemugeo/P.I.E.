@@ -35,7 +35,7 @@ export default function ChatPage() {
       
       const data = await res.json();
       setMessages(prev => [...prev, { role: 'ai', content: data.reply || data.error }]);
-    } catch {
+    } catch (error) {
       setMessages(prev => [...prev, { role: 'ai', content: "Neural link severed. Could not reach vector database." }]);
     } finally {
       setIsTyping(false);
@@ -80,7 +80,7 @@ export default function ChatPage() {
               <div className="h-full flex flex-col items-center justify-center text-neutral-600">
                 <BrainCircuit size={48} className="mb-4 opacity-20" />
                 <p className="text-sm">Query your cognitive stream.</p>
-                <p className="text-xs mt-2">Try: &quot;What ideas did I have about X?&quot;</p>
+                <p className="text-xs mt-2">Try: "What ideas did I have about X?"</p>
               </div>
             )}
 

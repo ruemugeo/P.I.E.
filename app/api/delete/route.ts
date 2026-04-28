@@ -11,7 +11,7 @@ export async function DELETE(req: Request) {
     const { id } = await req.json();
     await supabase.from('thoughts').delete().eq('id', id);
     return NextResponse.json({ success: true });
-  } catch {
+  } catch (error) {
     return NextResponse.json({ error: 'Delete failed' }, { status: 500 });
   }
 }

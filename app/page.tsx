@@ -1,20 +1,16 @@
 'use client';
-
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { motion } from 'framer-motion';
 import { Zap, Plus, Paperclip, Search, Clock, Trash2, Copy } from 'lucide-react';
-
-type Thought = {
-  id: string;
-  content: string;
-  created_at: string;
-};
+import { toast } from 'sonner';
 
 export default function HomePage() {
-  const [thoughts] = useState<Thought[]>([]);
+  const [thoughts, setThoughts] = useState([]);
   const [input, setInput] = useState('');
 
   return (
     <main className="p-6 max-w-2xl mx-auto">
+      {/* Header - Consistent with Action Matrix */}
       <header className="mb-10">
         <h1 className="text-4xl font-black text-white mb-2">Neural Records</h1>
         <div className="flex items-center gap-2 text-yellow-500 text-xs font-bold uppercase tracking-widest">
@@ -22,16 +18,18 @@ export default function HomePage() {
         </div>
       </header>
 
+      {/* Search Bar */}
       <div className="relative mb-8">
         <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-neutral-600" size={18} />
-        <input
-          placeholder="SEARCH NEURAL RECORDS..."
+        <input 
+          placeholder="SEARCH NEURAL RECORDS..." 
           className="w-full bg-[#0a0a0c] border border-white/5 rounded-2xl py-4 pl-12 pr-4 text-sm outline-none focus:border-white/20 transition-all"
         />
       </div>
 
+      {/* Input Section - Matched to Action Matrix */}
       <section className="bg-[#0a0a0c] border border-white/5 rounded-[2rem] p-6 mb-12">
-        <textarea
+        <textarea 
           value={input}
           onChange={(e) => setInput(e.target.value)}
           placeholder="Log a thought (Use # for interests)..."
@@ -47,34 +45,35 @@ export default function HomePage() {
         </div>
       </section>
 
+      {/* Records List */}
       <div className="space-y-6">
-        <h3 className="text-[10px] font-black text-neutral-600 uppercase tracking-[0.3em] mb-4">
-          Pending Insights
-        </h3>
-
+        <h3 className="text-[10px] font-black text-neutral-600 uppercase tracking-[0.3em] mb-4">Pending Insights</h3>
+        
+        {/* Placeholder for Empty State or Map your thoughts here */}
         {thoughts.length === 0 && (
           <div className="border border-dashed border-white/5 rounded-[2rem] p-12 flex items-center justify-center text-neutral-700 text-sm italic">
             Neural buffer is empty.
           </div>
         )}
 
+        {/* Example of a Thought Card styled like Action Matrix */}
         {thoughts.map((thought) => (
           <div key={thought.id} className="group bg-[#0a0a0c] border border-white/5 rounded-[2rem] p-6">
-            <div className="flex justify-between items-center mb-3">
-              <span className="flex items-center gap-2 text-[10px] text-neutral-600 font-bold">
-                <Clock size={10} /> {new Date(thought.created_at).toLocaleTimeString()}
-              </span>
-              <div className="flex gap-4 opacity-0 group-hover:opacity-100 transition-all">
-                <Copy size={14} className="text-neutral-600 hover:text-white cursor-pointer" />
-                <Trash2 size={14} className="text-neutral-600 hover:text-red-500 cursor-pointer" />
-              </div>
-            </div>
-            <p className="text-neutral-300 leading-relaxed">{thought.content}</p>
-            <div className="flex gap-4 mt-6 pt-4 border-t border-white/5">
-              <button className="text-[10px] font-black text-emerald-500 hover:opacity-70">ANGEL</button>
-              <button className="text-[10px] font-black text-rose-500 hover:opacity-70">DEVIL</button>
-              <button className="text-[10px] font-black text-yellow-500 hover:opacity-70">ZAP</button>
-            </div>
+             <div className="flex justify-between items-center mb-3">
+                <span className="flex items-center gap-2 text-[10px] text-neutral-600 font-bold">
+                  <Clock size={10} /> {new Date(thought.created_at).toLocaleTimeString()}
+                </span>
+                <div className="flex gap-4 opacity-0 group-hover:opacity-100 transition-all">
+                   <Copy size={14} className="text-neutral-600 hover:text-white cursor-pointer" />
+                   <Trash2 size={14} className="text-neutral-600 hover:text-red-500 cursor-pointer" />
+                </div>
+             </div>
+             <p className="text-neutral-300 leading-relaxed">{thought.content}</p>
+             <div className="flex gap-4 mt-6 pt-4 border-t border-white/5">
+                <button className="text-[10px] font-black text-emerald-500 hover:opacity-70">ANGEL</button>
+                <button className="text-[10px] font-black text-rose-500 hover:opacity-70">DEVIL</button>
+                <button className="text-[10px] font-black text-yellow-500 hover:opacity-70">ZAP</button>
+             </div>
           </div>
         ))}
       </div>

@@ -6,13 +6,6 @@ export const dynamic = 'force-dynamic';
 
 const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
 
-type Cluster = {
-  title: string;
-  summary: string;
-  status: string;
-  relevance: number;
-};
-
 export async function GET() {
   try {
     const supabase = createClient(
@@ -49,11 +42,10 @@ export async function GET() {
       config: { responseMimeType: "application/json" }
     });
 
-    const clusters = JSON.parse(response.text || '[]') as Cluster[];
+    const clusters = JSON.parse(response.text || "[]");
     return NextResponse.json({ clusters });
 
-  } catch (error: unknown) {
-    const message = error instanceof Error ? error.message : 'Unknown error';
-    return NextResponse.json({ error: message }, { status: 500 });
+  } catch (error: any) {
+    return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }

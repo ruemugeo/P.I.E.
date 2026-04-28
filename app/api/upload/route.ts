@@ -19,25 +19,16 @@ export async function POST(req: Request) {
 
     const fileUrl = `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/vault/${upload.path}`;
 
-    // 2. AI Summarization
+    // 2. AI Summarization (Gemini 2.5 Flash Lite)
+    const model = ai.getGenerativeModel({ model: "gemini-1.5-flash" });
     const fileBuffer = await file.arrayBuffer();
+    
+    const result = await model.generateContent([
+      "Extract the core concepts and 3 bullet points from this document for a digital brain. Summarize briefly.",
+      { inlineData: { data: Buffer.from(fileBuffer).toString('base64'), mimeType: file.type } }
+    ]);
 
-    const result = await ai.models.generateContent({
-      model: 'gemini-1.5-flash',
-      contents: [
-        {
-          text: 'Extract the core concepts and 3 bullet points from this document for a digital brain. Summarize briefly.',
-        },
-        {
-          inlineData: {
-            data: Buffer.from(fileBuffer).toString('base64'),
-            mimeType: file.type,
-          },
-        },
-      ],
-    });
-
-    const summary = result.text || '';
+    const summary = result.response.text();
 
     // 3. Save as Thought
     await supabase.from('thoughts').insert({
@@ -48,8 +39,7 @@ export async function POST(req: Request) {
     });
 
     return NextResponse.json({ success: true });
-  } catch (error: unknown) {
-    const message = error instanceof Error ? error.message : 'Unknown error';
-    return NextResponse.json({ error: message }, { status: 500 });
+  } catch (err: any) {
+    return NextResponse.json({ error: err.message }, { status: 500 });
   }
 }
