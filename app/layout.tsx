@@ -18,7 +18,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             <Link href="/" className="hover:text-white transition-colors"><Database size={24} /></Link>
             <Link href="/tasks" className="hover:text-white transition-colors"><CheckCircle size={24} /></Link>
             <Link href="/chat" className="hover:text-white transition-colors"><MessageSquare size={24} /></Link>
-            <Link href="/knowledge" className="hover:text-white transition-colors"><BookOpen size={24} /></Link>
+            <Link href="/wiki" className="hover:text-white transition-colors"><BookOpen size={24} /></Link>
           </div>
         </nav>
 
